@@ -192,16 +192,6 @@ public sealed class CustomProfilerPlugin
         }
         TestPatch10.instances.RemoveWhere(p => p == null || p.enabled);
 
-        foreach (FirearmWorldmodelLaser p in TestPatch11.instances)
-        {
-            if (p == null) continue;
-            p.LateUpdate();
-            bool near = Player.GetPlayers().Count(player => (player.Position - p.transform.position).sqrMagnitude < 100) > 0;
-            bool state = !p._pickupMode || near;
-            if (p.enabled != state) p.enabled = state;
-        }
-        TestPatch11.instances.RemoveWhere(p => p == null || p.enabled);
-
 
         if (GlobalChatIndicatorManager._singletonSet && GlobalChatIndicatorManager._singleton.enabled)
         {
