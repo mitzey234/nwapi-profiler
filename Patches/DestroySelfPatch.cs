@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
+using VoiceChat;
 using static HarmonyLib.AccessTools;
 
 /// <summary>
@@ -24,6 +25,7 @@ public static class DestroySelfPatch
         yield return Method(typeof(FirearmWorldmodelLaser), "Awake");
         yield return Method(typeof(EnvMimicryStandardButton), "Awake");
         yield return Method(typeof(HumeShieldBarController), "Awake");
+        yield return Method(typeof(VoiceChatMicCapture), "Awake");
         yield return Method(typeof(StatusBar), "Update");
     }
 

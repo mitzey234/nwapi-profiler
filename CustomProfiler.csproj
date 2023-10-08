@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>preview</LangVersion>
     <AssemblyTitle>CustomProfiler</AssemblyTitle>
     <Product>CustomProfiler</Product>
     <Copyright>Copyright © 2023</Copyright>
@@ -28,5 +28,6 @@
     <Reference Include="UnityEngine" HintPath="$(SL_REFERENCES)\UnityEngine.dll" Private="False" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(SL_REFERENCES)\UnityEngine.CoreModule.dll" Private="False" />
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(SL_REFERENCES)\UnityEngine.PhysicsModule.dll" Private="False" />
+	<Reference Include="Pooling" HintPath="$(SL_REFERENCES)\Pooling.dll" Private="False" />
   </ItemGroup>
 </Project>

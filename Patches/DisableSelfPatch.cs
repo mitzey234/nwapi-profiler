@@ -1,12 +1,16 @@
 ﻿namespace CustomProfiler.Patches;
-
+using PlayerRoles.Ragdolls;
+using VoiceChat.Playbacks;
+using FacilitySoundtrack;
 using HarmonyLib;
 using Interactables.Interobjects.DoorUtils;
+using PlayerRoles.FirstPersonControl.Thirdperson;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
 using static HarmonyLib.AccessTools;
+using PlayerRoles.PlayableScps.Scp049;
 
 /// <summary>
 /// This patch automatically forces behaviours to disable themselves.
@@ -16,7 +20,16 @@ public static class DisableSelfPatch
 {
     private static IEnumerable<MethodInfo> TargetMethods()
     {
-        yield return Method(typeof(DoorNametagExtension), "Start");
+        yield return Method(typeof(DoorNametagExtension), "FixedUpdate");
+        yield return Method(typeof(ZoneAmbientSoundtrack), "UpdateVolume");
+        yield return Method(typeof(SoundtrackManager), "Update");
+        yield return Method(typeof(StatusBar), "Update");
+        yield return Method(typeof(MainCameraController), "LateUpdate");
+        yield return Method(typeof(HumanCharacterModel), "Update"); //This may or may not break things, it seems ok tho
+        yield return Method(typeof(AnimatedCharacterModel), "Update"); //This may or may not break things, it seems ok tho
+        yield return Method(typeof(BasicRagdoll), "Update");
+        yield return Method(typeof(DynamicRagdoll), "Update");
+        //yield return Method(typeof(PersonalRadioPlayback), nameof(PersonalRadioPlayback.Awake)); //Disable radio updates and let manual updater do it every second, potentially breaks the game / radios
     }
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
