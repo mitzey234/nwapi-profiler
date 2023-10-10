@@ -23,7 +23,6 @@ public static class DisableSelfPatch
         yield return Method(typeof(DoorNametagExtension), "FixedUpdate");
         yield return Method(typeof(ZoneAmbientSoundtrack), "UpdateVolume");
         yield return Method(typeof(SoundtrackManager), "Update");
-        yield return Method(typeof(StatusBar), "Update");
         yield return Method(typeof(MainCameraController), "LateUpdate");
         yield return Method(typeof(HumanCharacterModel), "Update"); //This may or may not break things, it seems ok tho
         yield return Method(typeof(AnimatedCharacterModel), "Update"); //This may or may not break things, it seems ok tho

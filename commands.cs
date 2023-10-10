@@ -25,6 +25,25 @@ class profiler : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
+class memory : ICommand
+{
+    public string[] Aliases { get; set; } = new string[] { };
+
+    public string Description { get; set; } = "Prints memory metrics to the console";
+
+    public string usage { get; set; } = "memory";
+
+    string ICommand.Command { get; } = "memory";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        response = "\n" + CustomProfilerPlugin.getMemoryMetrics(true);
+        return true;
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+[CommandHandler(typeof(GameConsoleCommandHandler))]
 class resetProfiler : ICommand
 {
     public string[] Aliases { get; set; } = new string[] { };
@@ -119,6 +138,26 @@ class optoff : ICommand
     {
         CustomProfilerPlugin.disableOptimizations();
         response = "Disabling";
+        return true;
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+[CommandHandler(typeof(GameConsoleCommandHandler))]
+class uncap : ICommand
+{
+    public string[] Aliases { get; set; } = new string[] { };
+
+    public string Description { get; set; } = "Uncaps the TPS of the server runtime, togglable";
+
+    public string usage { get; set; } = "uncap";
+
+    string ICommand.Command { get; } = "uncap";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        CustomProfilerPlugin.upcapped = !CustomProfilerPlugin.upcapped;
+        response = CustomProfilerPlugin.upcapped ? "Enabling" : "Disabling";
         return true;
     }
 }

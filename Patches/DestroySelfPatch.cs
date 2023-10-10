@@ -10,6 +10,7 @@ using System.Reflection.Emit;
 using UnityEngine;
 using VoiceChat;
 using static HarmonyLib.AccessTools;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
 /// This patch automatically forces objects to destroy themselves.
@@ -27,6 +28,7 @@ public static class DestroySelfPatch
         yield return Method(typeof(HumeShieldBarController), "Awake");
         yield return Method(typeof(VoiceChatMicCapture), "Awake");
         yield return Method(typeof(StatusBar), "Update");
+        yield return Method(typeof(HDAdditionalLightData), "Awake");
     }
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)

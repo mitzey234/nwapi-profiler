@@ -5,6 +5,7 @@ using CustomPlayerEffects;
 using CustomProfiler.Extensions;
 using FacilitySoundtrack;
 using HarmonyLib;
+using Interactables;
 using Interactables.Interobjects.DoorUtils;
 using InventorySystem;
 using InventorySystem.Items;
@@ -309,6 +310,16 @@ public static class ProfileMethodPatch
         {
             StaticUnityMethods.OnUpdate -= __instance.AlwaysUpdate;
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(ItemPickupBase), "OnDestroy")]
+    internal class TestPatch19
+    {
+        public static void Postfix(ItemPickupBase __instance)
+        {
+            __instance.PhysicsModuleSyncData.Clear();
+            __instance.syncObjects.Clear();
         }
     }
 
