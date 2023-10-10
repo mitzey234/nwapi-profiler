@@ -28,6 +28,7 @@ internal static class FieldCollectionReaders
         { typeof(BitArray), CountGetter.ImplementMethod },
         { typeof(Stack<>), CountGetter.ImplementMethod },
         { typeof(Array), CountGetter.ImplementMethod },
+        { typeof(Queue<>), CountGetter.ImplementMethod },
     };
 
     static FieldCollectionReaders()
@@ -74,7 +75,10 @@ internal static class FieldCollectionReaders
         if (getCount.ContainsKey(field))
             return;
 
-        Type genericTypeDef = field.FieldType.GetGenericTypeDefinition();
+        Type genericTypeDef = field.FieldType;
+
+        if (genericTypeDef.IsGenericType)
+            genericTypeDef = genericTypeDef.GetGenericTypeDefinition();
 
         DynamicMethod method = new($"{field.DeclaringType.Name}.{field.Name}", typeof(int), [], true);
 
