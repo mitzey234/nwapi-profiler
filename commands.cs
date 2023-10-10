@@ -1,6 +1,7 @@
 ﻿namespace CustomProfiler.Commands;
 
 using CommandSystem;
+using CustomProfiler.Metrics;
 using System;
 using ICommand = CommandSystem.ICommand;
 
@@ -18,7 +19,7 @@ class profiler : ICommand
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
-        response = "\n" + CustomProfilerPlugin.getMetrics(true);
+        response = "\n" + MethodMetrics.getMethodMetrics(true);
         return true;
     }
 }

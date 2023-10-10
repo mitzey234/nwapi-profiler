@@ -1,14 +1,10 @@
 namespace CustomProfiler.Patches;
 
-using CommandSystem.Commands.RemoteAdmin;
 using CustomPlayerEffects;
 using CustomProfiler.Extensions;
-using FacilitySoundtrack;
+using CustomProfiler.Metrics;
 using HarmonyLib;
-using Interactables;
-using Interactables.Interobjects.DoorUtils;
 using InventorySystem;
-using InventorySystem.Items;
 using InventorySystem.Items.Armor;
 using InventorySystem.Items.Firearms;
 using InventorySystem.Items.Firearms.BasicMessages;
@@ -18,8 +14,6 @@ using MapGeneration;
 using Mirror;
 using PlayerRoles;
 using PluginAPI.Core;
-using PluginAPI.Core.Zones.Heavy;
-using RelativePositioning;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,7 +22,6 @@ using System.Reflection.Emit;
 using UnityEngine;
 using static CustomProfiler.Patches.ProfileMethodPatch.TestPatch7;
 using static HarmonyLib.AccessTools;
-using static PlayerList;
 
 public static class ProfileMethodPatch
 {
@@ -377,12 +370,12 @@ public static class ProfileMethodPatch
         if (!ProfiledMethodsByHash.TryGetValue(hash, out MethodBase method)) return;
         try
         {
-            if (!CustomProfilerPlugin.metrics.TryGetValue(method, out methodMetrics metrics))
+            if (!MethodMetrics.methodMetrics.TryGetValue(method, out MethodMetrics metrics))
             {
-                metrics = new methodMetrics();
+                metrics = new MethodMetrics();
                 metrics.method = method;
                 metrics.name = (method.DeclaringType != null ? method.DeclaringType.FullName : "Unknown Type") + "." + method.Name;
-                CustomProfilerPlugin.metrics.Add(method, metrics);
+                MethodMetrics.methodMetrics.Add(method, metrics);
             }
             metrics.invocationCount++;
             metrics.tickCount += totalTicks;
@@ -390,9 +383,9 @@ public static class ProfileMethodPatch
             StackTrace t = new StackTrace();
             MethodBase callingMethod = t.FrameCount >= 3 && !t.GetFrame(2).GetMethod().Name.Contains("_Patch0") && !t.GetFrame(2).GetMethod().Name.Contains("_Patch1") ? t.GetFrame(2).GetMethod() : (t.FrameCount >= 4 && !t.GetFrame(3).GetMethod().Name.Contains("_Patch0") && !t.GetFrame(3).GetMethod().Name.Contains("_Patch1") ? t.GetFrame(3).GetMethod() : null);
             if (callingMethod == null || t.FrameCount < 3) return;
-            if (!metrics.calls.TryGetValue(callingMethod, out methodMetrics subMetrics))
+            if (!metrics.calls.TryGetValue(callingMethod, out MethodMetrics subMetrics))
             {
-                subMetrics = new methodMetrics();
+                subMetrics = new MethodMetrics();
                 subMetrics.methodBase = callingMethod;
                 subMetrics.name = (callingMethod.DeclaringType != null ? callingMethod.DeclaringType.FullName : "Unknown Type") + "." + callingMethod.Name;
                 metrics.calls.Add(callingMethod, subMetrics);

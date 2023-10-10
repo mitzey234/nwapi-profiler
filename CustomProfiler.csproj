@@ -31,4 +31,10 @@
 	<Reference Include="Mirror" HintPath="$(SL_REFERENCES)\Mirror-Publicized.dll" Private="False" />
 	<Reference Include="Unity.RenderPipelines.HighDefinition.Runtime" HintPath="$(SL_REFERENCES)\Unity.RenderPipelines.HighDefinition.Runtime.dll" Private="False" />
   </ItemGroup>
+  <ItemGroup>
+    <EditorConfigFiles Remove="E:\development\private\nwapi-profiler\.editorconfig" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="E:\development\private\nwapi-profiler\.editorconfig" />
+  </ItemGroup>
 </Project>

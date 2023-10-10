@@ -1,5 +1,6 @@
 ﻿namespace CustomProfiler.ProfilerUtils;
 
+using CustomProfiler.Extensions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -39,7 +40,7 @@ internal static class FieldCollectionReaders
 
         foreach (Type type in types)
         {
-            foreach (FieldInfo field in GetFullyConstructedFields(type, includeNonPublic: true))
+            foreach (FieldInfo field in type.GetFullyConstructedFields(includeNonPublic: true))
             {
                 if (field.DeclaringType.GetCustomAttribute(typeof(CompilerGeneratedAttribute)) != null)
                     continue;
@@ -85,34 +86,6 @@ internal static class FieldCollectionReaders
         fieldProcessors[genericTypeDef](field, method.GetILGenerator());
 
         getCount[field] = (GetCount)method.CreateDelegate(typeof(GetCount));
-    }
-
-    /// <remarks>This only gets static fields.</remarks>
-    private static IEnumerable<FieldInfo> GetFullyConstructedFields(Type type, bool includeNonPublic)
-    {
-        if (type.IsGenericType && !type.IsConstructedGenericType)
-        {
-            yield break;
-        }
-
-        BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly;
-
-        if (includeNonPublic)
-        {
-            flags |= BindingFlags.NonPublic;
-        }
-
-        while (type != null)
-        {
-            FieldInfo[] fields = type.GetFields(flags);
-
-            for (int i = 0; i < fields.Length; i++)
-            {
-                yield return fields[i];
-            }
-
-            type = type.BaseType;
-        }
     }
 
     private static class CountGetter
