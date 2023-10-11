@@ -162,3 +162,23 @@ class uncap : ICommand
         return true;
     }
 }
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+[CommandHandler(typeof(GameConsoleCommandHandler))]
+class memoryUpdates : ICommand
+{
+    public string[] Aliases { get; set; } = new string[] { };
+
+    public string Description { get; set; } = "Controls array list fields updater, togglable";
+
+    public string usage { get; set; } = "updatememory";
+
+    string ICommand.Command { get; } = "updatememory";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        CustomProfilerPlugin.upcapped = !CustomProfilerPlugin.upcapped;
+        response = CustomProfilerPlugin.upcapped ? "Enabling" : "Disabling";
+        return true;
+    }
+}

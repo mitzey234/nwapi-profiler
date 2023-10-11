@@ -65,11 +65,6 @@ internal class BasicStuff
     [HarmonyPatch(typeof(Inventory), "Update")]
     public class TestPatch7
     {
-        public static void forceUpdate(Inventory instance)
-        {
-            instance.Update();
-        }
-
         public static bool Prefix(Inventory __instance)
         {
             __instance.enabled = false;

@@ -2,6 +2,7 @@
 using FacilitySoundtrack;
 using HarmonyLib;
 using Interactables.Interobjects.DoorUtils;
+using InventorySystem;
 using PlayerRoles.FirstPersonControl.Thirdperson;
 using PlayerRoles.Ragdolls;
 using System.Collections.Generic;

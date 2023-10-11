@@ -52,6 +52,8 @@ public sealed class CustomProfilerPlugin
 
     public static bool upcapped = false;
 
+    public static bool updateFields = false;
+
     [PluginEntryPoint("CustomProfiler", Version, "A custom profiler for SCP:SL.", "Zereth")]
     [PluginPriority(LoadPriority.Highest)]
     public void Entry()
@@ -260,7 +262,7 @@ public sealed class CustomProfilerPlugin
             return;
         timer = 0;
 
-        if (upcount % 10 == 0 && !ProfileMethodPatch.DisableProfiler)
+        if (upcount % 10 == 0 && !ProfileMethodPatch.DisableProfiler && (updateFields || allFields.Count == 0))
             updatecollections();
         if (ProfileMethodPatch.DisableProfiler && allFields.Count > 0)
             allFields.Clear();
