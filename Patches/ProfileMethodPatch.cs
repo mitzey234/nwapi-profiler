@@ -1,26 +1,14 @@
 namespace CustomProfiler.Patches;
 
-using CustomPlayerEffects;
 using CustomProfiler.Extensions;
 using CustomProfiler.Metrics;
 using HarmonyLib;
-using InventorySystem;
-using InventorySystem.Items.Armor;
-using InventorySystem.Items.Firearms;
-using InventorySystem.Items.Firearms.BasicMessages;
-using InventorySystem.Items.Pickups;
-using InventorySystem.Items.Usables.Scp244;
-using MapGeneration;
-using Mirror;
-using PlayerRoles;
 using PluginAPI.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
-using UnityEngine;
-using static CustomProfiler.Patches.ProfileMethodPatch.TestPatch7;
 using static HarmonyLib.AccessTools;
 
 public static class ProfileMethodPatch

@@ -4,6 +4,7 @@ using CustomPlayerEffects;
 using CustomProfiler.Extensions;
 using CustomProfiler.Metrics;
 using CustomProfiler.Patches;
+using CustomProfiler.Patches.Optimizations;
 using HarmonyLib;
 using Interactables;
 using Interactables.Interobjects.DoorUtils;
@@ -306,22 +307,22 @@ public sealed class CustomProfilerPlugin
             }
         });
 
-        foreach (FirearmPickup p in ProfileMethodPatch.TestPatch5.instances)
+        foreach (FirearmPickup p in BasicStuff.TestPatch5.instances)
         {
             if (p == null) continue;
             bool state = Player.GetPlayers().Count(player => (player.Position - p.Position).sqrMagnitude < 100) > 0;
             if (p.enabled != state) p.enabled = state;
         }
-        ProfileMethodPatch.TestPatch5.instances.RemoveWhere(p => p == null || p.enabled);
+        BasicStuff.TestPatch5.instances.RemoveWhere(p => p == null || p.enabled);
 
-        foreach (BodyArmorPickup p in ProfileMethodPatch.TestPatch6.instances)
+        foreach (BodyArmorPickup p in BasicStuff.TestPatch6.instances)
         {
             if (p == null) continue;
             p.Update();
             bool state = p.IsAffected;
             if (p.enabled != state) p.enabled = state;
         }
-        ProfileMethodPatch.TestPatch6.instances.RemoveWhere(p => p == null || p.enabled);
+        BasicStuff.TestPatch6.instances.RemoveWhere(p => p == null || p.enabled);
 
         if (GlobalChatIndicatorManager._singletonSet && GlobalChatIndicatorManager._singleton.enabled)
         {
@@ -444,7 +445,7 @@ public sealed class CustomProfilerPlugin
             output += $"{p.Key}: {p.Value}\n";
             if (print) Log.Debug($"{p.Key}: {p.Value}");
             numbers++;
-            if (numbers > 10) break;
+            if (numbers > 20) break;
         }
         return output;
     }

@@ -1,16 +1,14 @@
 ﻿namespace CustomProfiler.Patches;
-using PlayerRoles.Ragdolls;
-using VoiceChat.Playbacks;
 using FacilitySoundtrack;
 using HarmonyLib;
 using Interactables.Interobjects.DoorUtils;
 using PlayerRoles.FirstPersonControl.Thirdperson;
+using PlayerRoles.Ragdolls;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
 using static HarmonyLib.AccessTools;
-using PlayerRoles.PlayableScps.Scp049;
 
 /// <summary>
 /// This patch automatically forces behaviours to disable themselves.
