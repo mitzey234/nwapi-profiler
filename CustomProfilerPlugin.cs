@@ -316,15 +316,6 @@ public sealed class CustomProfilerPlugin
             }
         });
 
-        foreach (BodyArmorPickup p in BasicStuff.TestPatch6.instances)
-        {
-            if (p == null) continue;
-            p.Update();
-            bool state = p.IsAffected;
-            if (p.enabled != state) p.enabled = state;
-        }
-        BasicStuff.TestPatch6.instances.RemoveWhere(p => p == null || p.enabled);
-
         if (GlobalChatIndicatorManager._singletonSet && GlobalChatIndicatorManager._singleton.enabled)
         {
             Log.Debug("Disabled global chat indicator");

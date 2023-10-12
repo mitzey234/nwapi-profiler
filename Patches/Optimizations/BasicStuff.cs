@@ -29,22 +29,6 @@ internal class BasicStuff
         }
     }
 
-    //Save BodyArmorPickup instances and keep their updates limited
-    [HarmonyPatch(typeof(BodyArmorPickup), "Update")]
-    public class TestPatch6
-    {
-        public static HashSet<BodyArmorPickup> instances = new();
-
-        public static bool Prefix(BodyArmorPickup __instance)
-        {
-            if (!instances.Contains(__instance))
-            {
-                instances.Add(__instance);
-            }
-            return true;
-        }
-    }
-
     //Disable updating for inventory system, this will be handled every second instead
     [HarmonyPatch(typeof(Inventory), "Update")]
     public class TestPatch7
