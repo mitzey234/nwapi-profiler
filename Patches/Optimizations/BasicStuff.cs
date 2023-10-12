@@ -31,7 +31,7 @@ internal class BasicStuff
     }
 
     //Scp244 has a very intensive update, this limits it to 2 times a second
-    [HarmonyPatch(typeof(Scp244DeployablePickup), "Update")]
+    [HarmonyPatch(typeof(Scp244DeployablePickup))]
     internal class TestPatch16
     {
         public sealed class FloatValue
@@ -41,8 +41,11 @@ internal class BasicStuff
 
         public static ConditionalWeakTable<Scp244DeployablePickup, FloatValue> timers = new();
 
+        [HarmonyPatch(nameof(Scp244DeployablePickup.Update))]
         public static bool Prefix(Scp244DeployablePickup __instance)
         {
+            __instance.UpdateRange();
+
             if (!timers.TryGetValue(__instance, out FloatValue value))
             {
                 timers.Add(__instance, value = new FloatValue());
@@ -58,6 +61,12 @@ internal class BasicStuff
 
             time += Time.deltaTime;
             return true;
+        }
+
+        [HarmonyPatch(nameof(Scp244DeployablePickup.GrowSpeed), MethodType.Getter)]
+        public static float Postfix(float result)
+        {
+            return result * (0.5f / Time.deltaTime);
         }
     }
 
