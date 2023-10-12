@@ -281,7 +281,6 @@ public sealed class CustomProfilerPlugin
         if (Player.GetPlayers().Count(p => p.Role == RoleTypeId.Scp079) == 0) Scp079Camera.AllInstances.ForEach(c => c.enabled = false);
         else Scp079Camera.AllInstances.ForEach(c => c.enabled = true);
         ReferenceHub.AllHubs.ForEach(p => {
-            p.inventory.Update();
 
             /* this was part of PersonalRadioPlayback disabling, but it seems to break the game
             try
