@@ -11,6 +11,7 @@ using InventorySystem.Items.Usables.Scp244;
 using Mirror;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 [HarmonyPatch]
@@ -51,23 +52,30 @@ internal class BasicStuff
     [HarmonyPatch(typeof(Scp244DeployablePickup), "Update")]
     internal class TestPatch16
     {
+        public sealed class FloatValue
+        {
+            public float Time;
+        }
 
-        public static Dictionary<int, float> timers = new();
+        public static ConditionalWeakTable<Scp244DeployablePickup, FloatValue> timers = new();
 
         public static bool Prefix(Scp244DeployablePickup __instance)
         {
-            __instance.UpdateCurrentRoom();
-            int hash = __instance.GetHashCode();
-            if (!timers.TryGetValue(hash, out float timer)) timers.Add(hash, 0f);
-            timers[hash] += Time.deltaTime;
-            if (timers[hash] >= 0.5f)
+            if (!timers.TryGetValue(__instance, out FloatValue value))
             {
-                timers[hash] = 0f;
-                __instance.UpdateConditions();
+                timers.Add(__instance, value = new FloatValue());
             }
-            __instance.UpdateRange();
-            //__instance.UpdateEffects();
-            return false;
+
+            ref float time = ref value.Time;
+
+            if (time >= 0.5f)
+            {
+                time -= 0.5f;
+                return false;
+            }
+
+            time += Time.deltaTime;
+            return true;
         }
     }
 
