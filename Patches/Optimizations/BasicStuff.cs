@@ -30,24 +30,6 @@ internal class BasicStuff
         }
     }
 
-    //This helps with cleanup
-    [HarmonyPatch(typeof(Scp244DeployablePickup), nameof(Scp244DeployablePickup.OnDestroy))]
-    internal class TestPatch15
-    {
-
-        public static void Postfix(Scp244DeployablePickup __instance)
-        {
-            try
-            {
-                TestPatch16.timers.Remove(__instance.GetHashCode());
-            }
-            catch (Exception e)
-            {
-                //ignore
-            }
-        }
-    }
-
     //Scp244 has a very intensive update, this limits it to 2 times a second
     [HarmonyPatch(typeof(Scp244DeployablePickup), "Update")]
     internal class TestPatch16
