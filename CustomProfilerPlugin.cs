@@ -10,6 +10,7 @@ using Interactables;
 using Interactables.Interobjects.DoorUtils;
 using InventorySystem.Items.Armor;
 using InventorySystem.Items.Firearms;
+using InventorySystem.Items.Firearms.BasicMessages;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244.Hypothermia;
 using Mirror;
@@ -87,6 +88,12 @@ public sealed class CustomProfilerPlugin
         //Clean up ItemPickupBases
         List<ItemPickupBase> array = UnityEngine.Object.FindObjectsOfType<ItemPickupBase>().Where(i => i != null).ToList();
         array.ForEach(i => i.PhysicsModuleSyncData.Clear());
+
+        //Cleanup FirearmClientsideStateDatabase
+        FirearmClientsideStateDatabase.AdsTracker.Clear();
+        FirearmClientsideStateDatabase.PreReloadStatuses.Clear();
+        FirearmClientsideStateDatabase.ReloadTimes.Clear();
+        FirearmClientsideStateDatabase.ReloadTracker.Clear();
     }
 
     public static void disableOptimizations ()

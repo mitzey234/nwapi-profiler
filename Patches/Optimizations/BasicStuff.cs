@@ -220,6 +220,4 @@ internal class BasicStuff
             __instance.syncObjects.Clear();
         }
     }
-
-
 }
