@@ -29,22 +29,6 @@ internal class BasicStuff
         }
     }
 
-    //Save firearm instances and keep their updates limited
-    [HarmonyPatch(typeof(FirearmPickup), "Update")]
-    public class TestPatch5
-    {
-        public static HashSet<FirearmPickup> instances = new();
-
-        public static bool Prefix(FirearmPickup __instance)
-        {
-            if (!instances.Contains(__instance))
-            {
-                instances.Add(__instance);
-            }
-            return true;
-        }
-    }
-
     //Save BodyArmorPickup instances and keep their updates limited
     [HarmonyPatch(typeof(BodyArmorPickup), "Update")]
     public class TestPatch6

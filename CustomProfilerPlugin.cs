@@ -316,14 +316,6 @@ public sealed class CustomProfilerPlugin
             }
         });
 
-        foreach (FirearmPickup p in BasicStuff.TestPatch5.instances)
-        {
-            if (p == null) continue;
-            bool state = Player.GetPlayers().Count(player => (player.Position - p.Position).sqrMagnitude < 100) > 0;
-            if (p.enabled != state) p.enabled = state;
-        }
-        BasicStuff.TestPatch5.instances.RemoveWhere(p => p == null || p.enabled);
-
         foreach (BodyArmorPickup p in BasicStuff.TestPatch6.instances)
         {
             if (p == null) continue;
