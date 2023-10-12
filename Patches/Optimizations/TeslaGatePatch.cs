@@ -103,14 +103,10 @@ public static class TeslaGatePatch
                     continue;
                 }
 
-                bool isIdling;
-                bool isTriggered;
+                bool isIdling = true;
+                bool isTriggered = false;
 
-                if (teslaGate.InProgress)
-                {
-                    ProcessInProgress(aliveHubs, teslaGate, out isIdling, out isTriggered);
-                }
-                else
+                if (!teslaGate.InProgress)
                 {
                     ProcessNotInProgress(aliveHubs, teslaGate, out isIdling, out isTriggered);
                 }
@@ -120,21 +116,6 @@ public static class TeslaGatePatch
 
                 if (isIdling != teslaGate.isIdling)
                     teslaGate.ServerSideIdle(isIdling);
-            }
-        }
-
-        private static void ProcessInProgress(ReferenceHub[] hubs, TeslaGate teslaGate, out bool isIdling, out bool isTriggered)
-        {
-            isIdling = false;
-            isTriggered = false;
-
-            for (int h = 0; h < hubs.Length; h++)
-            {
-                if (teslaGate.IsInIdleRange(hubs[h].transform.position))
-                {
-                    isIdling = true;
-                    return;
-                }
             }
         }
 
@@ -155,20 +136,10 @@ public static class TeslaGatePatch
                 if (teslaGate.InRange(hubs[h].transform.position))
                 {
                     isTriggered = true;
-                    goto ProcessTriggered;
-                }
-            }
-
-            ProcessTriggered:
-            for (; h < hubs.Length; h++)
-            {
-                if (teslaGate.IsInIdleRange(hubs[h].transform.position))
-                {
                     isIdling = true;
                     return;
                 }
             }
-            return;
 
             ProcessIdling:
             for (; h < hubs.Length; h++)
