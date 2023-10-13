@@ -134,7 +134,7 @@ public sealed class CustomProfilerPlugin
     {
         ProfileMethodPatch.DisableProfiler = true;
 
-        MethodMetrics.methodMetrics.Clear();
+        //MethodMetrics.methodMetrics.Clear(); //Sometimes I wanna keep the data, lets reset it when enabling
     }
 
     public static int patched = 0;
@@ -211,19 +211,51 @@ public sealed class CustomProfilerPlugin
         // try to patch the same method twice.
         HashSet<MethodBase> methods = new();
 
+        List<string> disabled = new List<string>
+        {
+            "UnityEngine",
+            "System.",
+            "LiteNetLib.",
+            "Mirror",
+            "RelativePositioning",
+            "StaticUnityMethods",
+            "VoiceChatPlaybackBase",
+            "Radio.RadioItem",
+            "DoorVariant.Update",
+            "Distributors.Locker",
+            "DoorUtils.DoorVariant",
+            "RoomLightController",
+            ".PlayerRoleManager",
+            ".TimedGrenadePickup",
+            ".PlayerEffectsController",
+            ".StatusEffectBase",
+            ".ElevatorChamber",
+            ".FirstPersonMovementModule",
+            "PlayerEffectsController",
+            "Visibility.VisibilityController",
+            "Playbacks.PersonalRadioPlayback",
+            "RigidBodyElevatorFollower",
+            "LightContainmentZoneDecontamination.DecontaminationController.Update",
+            "Scp173.Scp173MovementModule",
+            "AlphaWarheadController",
+            "ReferenceHub.",
+            "PlayerRoles.",
+            "CharacterClassManager."
+        };
+
         int failed = 0;
 
         foreach (Type t in types)
         {
             if (!t.IsSubclassOf(typeof(MonoBehaviour)))
                 continue;
-            if (t.FullName.Contains("UnityEngine") || t.FullName.StartsWith("System.") || t.FullName.StartsWith("LiteNetLib.") || t.FullName.Contains("Mirror") || t.FullName.Contains("RelativePositioning") || t.FullName.Contains("StaticUnityMethods") || t.FullName.Contains("VoiceChatPlaybackBase") || t.FullName.Contains("Radio.RadioItem") || t.FullName.Contains("DoorVariant.Update") || t.FullName.Contains("Distributors.Locker") || t.FullName.Contains("DoorUtils.DoorVariant") || t.FullName.Contains("RoomLightController")) continue;
+            if (disabled.FirstOrDefault(x => t.FullName.Contains(x)) != null) continue;
             if (t.IsSubclassOf(typeof(DoorVariant))) continue;
 
 
             foreach (MethodInfo m in t.GetFullyConstructedMethods(includeNonPublic: true))
             {
-                if (m.DeclaringType.FullName.Contains("UnityEngine") || m.DeclaringType.FullName.StartsWith("System.") || m.DeclaringType.FullName.StartsWith("LiteNetLib.") || m.DeclaringType.FullName.Contains("Mirror") || m.DeclaringType.FullName.Contains("RelativePositioning") || m.DeclaringType.FullName.Contains("StaticUnityMethods") || m.DeclaringType.FullName.Contains("VoiceChatPlaybackBase") || m.DeclaringType.FullName.Contains("Radio.RadioItem") || m.DeclaringType.FullName.Contains("DoorVariant.Update") || m.DeclaringType.FullName.Contains("Distributors.Locker") || m.DeclaringType.FullName.Contains("DoorUtils.DoorVariant") || m.DeclaringType.FullName.Contains("RoomLightController")) continue;
+                if (disabled.FirstOrDefault(x => m.DeclaringType.FullName.Contains(x)) != null) continue;
                 methods.Add(m);
                 //break;
             }

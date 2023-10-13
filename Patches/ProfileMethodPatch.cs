@@ -37,8 +37,6 @@ public static class ProfileMethodPatch
             return;
         }
 
-        HashSetPool<MethodBase>.Shared.Return(optimizedMethods);
-
         if (method.GetMethodBody() == null)
         {
             throw new ArgumentException("Cannot patch a method without a body.");

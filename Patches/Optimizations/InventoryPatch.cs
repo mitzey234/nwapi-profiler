@@ -12,6 +12,7 @@ using static HarmonyLib.AccessTools;
 using System.Linq;
 using UnityEngine;
 
+/*
 [HarmonyPatch(typeof(Inventory))]
 public static class InventoryPatch
 {
@@ -20,6 +21,7 @@ public static class InventoryPatch
     //
     // Note that optimizing the Inventory.Update method probably isnt worth it, as it isnt very intense.
     //
+    // Y'know, you may be right
 
     [HarmonyTranspiler]
     [HarmonyPatch(nameof(Inventory.NetworkCurItem), MethodType.Setter)]
@@ -104,3 +106,4 @@ public static class InventoryPatch
         return newInstructions.FinishTranspiler();
     }
 }
+*/

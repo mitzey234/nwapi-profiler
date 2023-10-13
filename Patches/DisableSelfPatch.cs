@@ -27,6 +27,8 @@ public static class DisableSelfPatch
         yield return Method(typeof(AnimatedCharacterModel), "Update"); //This may or may not break things, it seems ok tho
         yield return Method(typeof(BasicRagdoll), "Update");
         yield return Method(typeof(DynamicRagdoll), "Update");
+        yield return Method(typeof(AlphaWarheadNukesitePanel), "Update");
+        yield return Method(typeof(AlphaWarheadOutsitePanel), "Update");
         //yield return Method(typeof(PersonalRadioPlayback), nameof(PersonalRadioPlayback.Awake)); //Disable radio updates and let manual updater do it every second, potentially breaks the game / radios
     }
 
