@@ -1,33 +1,21 @@
 ﻿namespace CustomProfiler.Patches.Optimizations;
 
 using CustomPlayerEffects;
-using FacilitySoundtrack;
+using CustomProfiler.Extensions;
 using HarmonyLib;
-using Interactables.Interobjects.DoorUtils;
-using InventorySystem;
 using InventorySystem.Items.Armor;
-using InventorySystem.Items.Firearms;
 using InventorySystem.Items.Firearms.Attachments;
-using InventorySystem.Items.Firearms.BasicMessages;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244;
 using MapGeneration.Distributors;
-using Mirror;
-using PlayerRoles.FirstPersonControl.Thirdperson;
-using PlayerRoles.Ragdolls;
 using PlayerRoles.Voice;
-using PluginAPI.Core;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection.Emit;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using UnityEngine;
-using VoiceChat;
 using VoiceChat.Networking;
 using static HarmonyLib.AccessTools;
-using CustomProfiler.Extensions;
 
 [HarmonyPatch]
 internal class BasicStuff
@@ -179,37 +167,26 @@ internal class BasicStuff
         }
     }
 
-    //This is the transpiler, it replaces the updater with a call to the module's update method
-    //This may or may not be better since VoiceTransceiver.ServerReceiveMessage seems to fire faster than the update method
     [HarmonyPatch(typeof(VoiceTransceiver))]
     public static class TestPatch27
     {
+        // We dont call update inside of a foreach loop.
+        // We call after the ratelimit check.
+
         [HarmonyTranspiler]
         [HarmonyPatch(nameof(VoiceTransceiver.ServerReceiveMessage))]
         private static IEnumerable<CodeInstruction> VoiceTransceiverServerReceiveMessage_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
         {
             instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
 
-            int index = newInstructions.FindIndex(x => x.opcode == OpCodes.Callvirt && x.Calls(Method(typeof(VoiceModuleBase), nameof(VoiceModuleBase.ValidateReceive))));
-            int getModuleIndex = index;
-            int loadVarIndex = index;
-            bool found = false;
-            while (getModuleIndex > 0 && !found) {
-                if (newInstructions[getModuleIndex].Calls(PropertyGetter(typeof(IVoiceRole), nameof(IVoiceRole.VoiceModule))))
-                {
-                    found = true;
-                    break;
-                }
-                getModuleIndex--;
-            }
-            if (found) loadVarIndex = getModuleIndex - 1;
-            else throw new Exception("Could not find the variable loader");
+            int index = newInstructions.FindIndex(x => x.Calls(Method(typeof(VoiceModuleBase), nameof(VoiceModuleBase.CheckRateLimit))));
 
-            newInstructions.InsertRange(index+1, new CodeInstruction[]
+            newInstructions.InsertRange(index + 1, new CodeInstruction[]
             {
-                new(newInstructions[loadVarIndex].opcode, newInstructions[loadVarIndex].operand),
-                new(newInstructions[getModuleIndex].opcode, newInstructions[getModuleIndex].operand),
-                new(OpCodes.Callvirt, typeof(VoiceModuleBase).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic, null, CallingConventions.Any, new Type[] { }, null)),
+                // voiceRole.VoiceModule.Update();
+                new(OpCodes.Ldloc_0),
+                new(OpCodes.Callvirt, PropertyGetter(typeof(IVoiceRole), nameof(IVoiceRole.VoiceModule))),
+                new(OpCodes.Callvirt, Method(typeof(VoiceModuleBase), nameof(VoiceModuleBase.Update))),
             });
 
             return newInstructions.FinishTranspiler();
