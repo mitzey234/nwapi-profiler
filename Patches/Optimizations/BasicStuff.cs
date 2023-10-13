@@ -203,8 +203,8 @@ internal class BasicStuff
 
             ref float time = ref value.Time;
             time += Time.deltaTime;
-            if (time <= 0.25f) return false;
-            time = 0;
+            if (time <= 1f) return false;
+            time -= 1f;
             return true;
         }
     }
