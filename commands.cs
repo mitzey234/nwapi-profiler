@@ -10,7 +10,7 @@ using ICommand = CommandSystem.ICommand;
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class profiler : ICommand
+class profiler : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -29,7 +29,7 @@ class profiler : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class memory : ICommand
+class memory : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -48,7 +48,7 @@ class memory : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class resetProfiler : ICommand
+class resetProfiler : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -68,7 +68,7 @@ class resetProfiler : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class stopProfiler : ICommand
+class stopProfiler : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -88,7 +88,7 @@ class stopProfiler : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class startProfiler : ICommand
+class startProfiler : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -108,7 +108,7 @@ class startProfiler : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class opton : ICommand
+class opton : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -128,7 +128,7 @@ class opton : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class optoff : ICommand
+class optoff : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -148,7 +148,7 @@ class optoff : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class uncap : ICommand
+class uncap : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 
@@ -168,7 +168,7 @@ class uncap : ICommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class memoryUpdates : ICommand
+class memoryUpdates : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };
 

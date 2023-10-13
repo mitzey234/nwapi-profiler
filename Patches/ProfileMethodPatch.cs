@@ -19,7 +19,7 @@ public static class ProfileMethodPatch
 {
     internal static bool DisableProfiler = false;
 
-    private static ProfiledMethodInfo[] ProfilerInfos = new ProfiledMethodInfo[4000];
+    private static ProfiledMethodInfo[] ProfilerInfos = new ProfiledMethodInfo[7000];
 
     private static HarmonyMethod ProfilerTranspiler = new(typeof(ProfileMethodPatch), nameof(Transpiler));
 
@@ -228,8 +228,8 @@ public static class ProfileMethodPatch
 
         private static volatile int patchedCount = 0;
 
-        private static Dictionary<MethodBase, int> patched = new(4000);
-        private static Dictionary<int, MethodBase> byIndex = new(4000);
+        private static Dictionary<MethodBase, int> patched = new(7000);
+        private static Dictionary<int, MethodBase> byIndex = new(7000);
 
         public static bool AddMethod(MethodBase method)
         {
