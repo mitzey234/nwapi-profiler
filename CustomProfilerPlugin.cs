@@ -1,15 +1,12 @@
 ﻿namespace CustomProfiler;
 
 using CustomPlayerEffects;
+using CustomProfiler.API;
 using CustomProfiler.Extensions;
-using CustomProfiler.Metrics;
 using CustomProfiler.Patches;
-using CustomProfiler.Patches.Optimizations;
 using HarmonyLib;
 using Interactables;
 using Interactables.Interobjects.DoorUtils;
-using InventorySystem.Items.Armor;
-using InventorySystem.Items.Firearms;
 using InventorySystem.Items.Firearms.BasicMessages;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244.Hypothermia;
@@ -127,7 +124,14 @@ public sealed class CustomProfilerPlugin
 
     internal static void reset()
     {
-        MethodMetrics.methodMetrics.Clear();
+        foreach (AsRef<ProfileMethodPatch.ProfiledMethodInfo> asRefInfo in ProfileMethodPatch.GetProfilerInfos())
+        {
+            ref ProfileMethodPatch.ProfiledMethodInfo info = ref asRefInfo.Value;
+
+            info.InvocationCount = 0;
+            info.TotalTicks = 0;
+            info.MaxTicks = 0;
+        }
     }
 
     internal static void disableProfiler ()
@@ -238,7 +242,7 @@ public sealed class CustomProfilerPlugin
             "LightContainmentZoneDecontamination.DecontaminationController.Update",
             "Scp173.Scp173MovementModule",
             "AlphaWarheadController",
-            "ReferenceHub.",
+            "ReferenceHub",
             "PlayerRoles.",
             "CharacterClassManager."
         };
@@ -354,44 +358,6 @@ public sealed class CustomProfilerPlugin
         }
 
         activeStacks.Clear();
-
-        var sortedDict1 = from entry in MethodMetrics.methodMetrics orderby entry.Value.invocationCount descending select entry;
-        var sortedDict2 = from entry in MethodMetrics.methodMetrics orderby entry.Value.tickCount descending select entry;
-        var sortedDict3 = from entry in MethodMetrics.methodMetrics.Where(x => x.Value.invocationCount > 10) orderby entry.Value.ticksPerInvoke descending select entry;
-
-        int count = 0;
-        foreach (KeyValuePair<MethodBase, MethodMetrics> kvp in sortedDict1)
-        {
-            if (activeStacks.Contains(kvp.Value.method))
-            {
-                count++;
-                activeStacks.Add(kvp.Value.method);
-            }
-            if (count >= 5) break;
-        }
-
-        count = 0;
-        foreach (KeyValuePair<MethodBase, MethodMetrics> kvp in sortedDict2)
-        {
-            if (activeStacks.Contains(kvp.Value.method))
-            {
-                count++;
-                activeStacks.Add(kvp.Value.method);
-            }
-            if (count >= 5) break;
-        }
-
-        count = 0;
-        foreach (KeyValuePair<MethodBase, MethodMetrics> kvp in sortedDict3)
-        {
-            if (activeStacks.Contains(kvp.Value.method))
-            {
-                count++;
-                activeStacks.Add(kvp.Value.method);
-            }
-            if (count >= 10) break;
-        }
-
     }
 
     public static string getMemoryMetrics (bool print = false)

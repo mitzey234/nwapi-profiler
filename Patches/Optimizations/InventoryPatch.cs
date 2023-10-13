@@ -1,18 +1,19 @@
 ﻿namespace CustomProfiler.Patches.Optimizations;
 
+using CustomProfiler.Extensions;
 using HarmonyLib;
 using InventorySystem;
-using System.Collections.Generic;
-using System.Reflection.Emit;
-using System.Reflection;
-using CustomProfiler.Extensions;
 using InventorySystem.Items;
+using Mirror;
+using PlayerRoles.FirstPersonControl;
 using PluginAPI.Events;
-using static HarmonyLib.AccessTools;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
+using static HarmonyLib.AccessTools;
 
-/*
 [HarmonyPatch(typeof(Inventory))]
 public static class InventoryPatch
 {
@@ -23,8 +24,8 @@ public static class InventoryPatch
     //
     // Y'know, you may be right
 
-    [HarmonyTranspiler]
-    [HarmonyPatch(nameof(Inventory.NetworkCurItem), MethodType.Setter)]
+    //[HarmonyTranspiler]
+    //[HarmonyPatch(nameof(Inventory.NetworkCurItem), MethodType.Setter)]
     private static IEnumerable<CodeInstruction> NetworkCurItem_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {
         instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
@@ -88,22 +89,75 @@ public static class InventoryPatch
         return newInstructions.FinishTranspiler();
     }
 
-    [HarmonyTranspiler]
-    [HarmonyPatch(nameof(Inventory.Update))]
+    //[HarmonyTranspiler]
+    //[HarmonyPatch(nameof(Inventory.Update))]
     private static IEnumerable<CodeInstruction> Update_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {
         instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
 
-        Label skipLabel = generator.DefineLabel();
+        CodeInstruction replacement = new(OpCodes.Nop);
 
         int beginIndex = newInstructions.FindIndex(x => x.LoadsField(Field(typeof(Inventory), nameof(Inventory._prevCurItem)))) - 1;
-
-        newInstructions.Insert(beginIndex, new CodeInstruction(OpCodes.Br, skipLabel).MoveLabelsFrom(newInstructions[beginIndex]));
-
         int lastIndex = newInstructions.FindIndex(x => x.Calls(PropertyGetter(typeof(Inventory), nameof(Inventory.IsObserver)))) - 1;
-        newInstructions[lastIndex].labels.Add(skipLabel);
+
+        for (int i = beginIndex; i < lastIndex + 1; i++)
+        {
+            newInstructions[i].MoveLabelsTo(replacement);
+        }
+
+        newInstructions.RemoveRange(beginIndex, lastIndex - beginIndex + 1);
+
+        newInstructions.Insert(beginIndex, replacement);
 
         return newInstructions.FinishTranspiler();
     }
+
+    [HarmonyTranspiler]
+    [HarmonyPatch(nameof(Inventory.RefreshModifiers))]
+    private static IEnumerable<CodeInstruction> RefreshModifiers_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
+    {
+        return new CodeInstruction[]
+        {
+            new(OpCodes.Ldarg_0),
+            new(OpCodes.Call, Method(typeof(InventoryPatch), nameof(RefreshModifiers))),
+            new(OpCodes.Ret),
+        };
+    }
+
+    private static void RefreshModifiers(Inventory _this)
+    {
+        if (!NetworkServer.active)
+            return;
+
+        if (Time.timeSinceLevelLoadAsDouble % 1f <= 0.5f)
+            return;
+
+        float staminaModifier = 1f;
+        float movementLimiter = float.MaxValue;
+        float movementMultiplier = 1f;
+        bool sprintingDisabled = false;
+
+        var enumerator = _this.UserInventory.Items.Values.GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+            ItemBase item = enumerator.Current;
+
+            if (item is IStaminaModifier staminaModifierItem && staminaModifierItem.StaminaModifierActive)
+            {
+                staminaModifier *= staminaModifierItem.StaminaUsageMultiplier;
+                sprintingDisabled |= staminaModifierItem.SprintingDisabled;
+            }
+            if (item is IMovementSpeedModifier movementSpeedModifier && movementSpeedModifier.MovementModifierActive)
+            {
+                movementLimiter = Mathf.Min(_this._movementLimiter, movementSpeedModifier.MovementSpeedLimit);
+                movementMultiplier *= movementSpeedModifier.MovementSpeedMultiplier;
+            }
+        }
+
+        _this.Network_syncStaminaModifier = staminaModifier;
+        _this.Network_syncMovementLimiter = movementLimiter;
+        _this.Network_syncMovementMultiplier = movementMultiplier;
+        _this._sprintingDisabled = sprintingDisabled;
+    }
 }
-*/

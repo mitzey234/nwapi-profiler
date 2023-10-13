@@ -1,38 +1,50 @@
 namespace CustomProfiler.Patches;
 
+using CustomProfiler.API;
 using CustomProfiler.Extensions;
-using CustomProfiler.Metrics;
 using HarmonyLib;
 using NorthwoodLib.Pools;
 using PluginAPI.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 using static HarmonyLib.AccessTools;
 
 public static class ProfileMethodPatch
 {
     internal static bool DisableProfiler = false;
 
+    private static ProfiledMethodInfo[] ProfilerInfos = new ProfiledMethodInfo[4000];
+
     private static HarmonyMethod ProfilerTranspiler = new(typeof(ProfileMethodPatch), nameof(Transpiler));
 
-    private static HashSet<MethodBase> optimizedMethods;
-    private static HashSet<MethodBase> ProfiledMethods = new();
-    private static Dictionary<long, MethodBase> ProfiledMethodsByHash = new();
+    private static HashSet<MethodBase> OptimizedMethods;
+
+    internal static IEnumerable<AsRef<ProfiledMethodInfo>> GetProfilerInfos()
+    {
+        int maxIndex = ProfiledMethodsTracker.MaxIndex;
+
+        for (int i = 0; i < maxIndex; i++)
+        {
+            yield return new(ref ProfilerInfos[i]);
+        }
+    }
 
     internal static void ApplyProfiler(MethodBase method)
     {
-        if (ProfiledMethods.Contains(method))
+        if (!ProfiledMethodsTracker.AddMethod(method))
         {
-            return;
+            throw new Exception("Failed to add method.");
         }
 
-        optimizedMethods ??= new(CustomProfilerPlugin.HarmonyOptimizations.GetPatchedMethods());
+        OptimizedMethods ??= new(CustomProfilerPlugin.HarmonyOptimizations.GetPatchedMethods());
 
-        if (optimizedMethods.Contains(method))
+        if (OptimizedMethods.Contains(method))
         {
             return;
         }
@@ -40,28 +52,6 @@ public static class ProfileMethodPatch
         if (method.GetMethodBody() == null)
         {
             throw new ArgumentException("Cannot patch a method without a body.");
-        }
-
-        Type[] args;
-
-        if (method.IsGenericMethod)
-        {
-            throw new ArgumentException($"Cannot patch generic method");
-
-            if (method.ContainsGenericParameters)
-            {
-                throw new ArgumentException($"Cannot patch generic method that is not constructed.");
-            }
-
-            args = method.GetGenericArguments();
-
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (!args[i].IsValueType)
-                {
-                    throw new ArgumentException($"Cannot patch generic method using reference type arguments. This can cause instability.");
-                }
-            }
         }
 
         if (method.DeclaringType?.IsGenericType ?? false)
@@ -87,14 +77,24 @@ public static class ProfileMethodPatch
             baseType = baseType.BaseType;
         }
 
-        CustomProfilerPlugin.Harmony.Patch(method, prefix: null, postfix: null, transpiler: ProfilerTranspiler, finalizer: null);
-
-        ProfiledMethods.Add(method);
-        ProfiledMethodsByHash.Add(method.GetHashCode(), method);
+        try
+        {
+            CustomProfilerPlugin.Harmony.Patch(method, prefix: null, postfix: null, transpiler: ProfilerTranspiler, finalizer: null);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e.ToString());
+        }
     }
 
-    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
+    private static unsafe IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {
+        if (!ProfiledMethodsTracker.GetMethodIndex(method, out int methodIndex))
+        {
+            Log.Error("Could not locate method index?");
+            return instructions;
+        }
+
         instructions.BeginTranspiler(out List<CodeInstruction> newInstuctions);
 
         // long startTimestamp;
@@ -137,14 +137,18 @@ public static class ProfileMethodPatch
             {
                 // if (!profilerDisabled)
                 // {
-                //     ProfileMethodPatch.ProfileMethod(method.GetHashCode(), Stopwatch.GetTimestamp() - startTimestamp)
+                //     ProfileMethodPatch.ProfileMethod(Stopwatch.GetTimestamp() - startTimestamp, ref ProfilerInfos[methodIndex], methodIndex)
                 // }
                 new CodeInstruction(OpCodes.Ldloc_S, profilerDisabled).WithLabels(stolenLabels),
                 new(OpCodes.Brtrue_S, justReturnLabel),
-                new(OpCodes.Ldc_I4, method.GetHashCode()),
+
                 new(OpCodes.Call, Method(typeof(Stopwatch), nameof(Stopwatch.GetTimestamp))),
                 new(OpCodes.Ldloc_S, startTimestamp),
                 new(OpCodes.Sub),
+                new(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(ProfilerInfos))),
+                new(OpCodes.Ldc_I4, methodIndex),
+                new(OpCodes.Ldelema, typeof(ProfiledMethodInfo)),
+                new(OpCodes.Ldc_I4, methodIndex),
                 new(OpCodes.Call, Method(typeof(ProfileMethodPatch), nameof(ProfileMethod))),
             });
 
@@ -154,40 +158,99 @@ public static class ProfileMethodPatch
         return newInstuctions.FinishTranspiler();
     }
 
-    private static void ProfileMethod(int hash, long totalTicks)
+    private static void ProfileMethod(long totalTicks, ref ProfiledMethodInfo info, int methodIndex)
     {
-        if (!ProfiledMethodsByHash.TryGetValue(hash, out MethodBase method)) return;
-        try
+        info.InvocationCount++;
+        info.TotalTicks += totalTicks;
+        info.MaxTicks = Math.Max(info.MaxTicks, totalTicks);
+    }
+
+    /// <summary>
+    /// A struct for containing profiler info.
+    /// </summary>
+    /// <remarks><b>Do not create instances of this struct, or you will encounter problems.</b></remarks>
+    [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 1, Size = 24)]
+    public unsafe struct ProfiledMethodInfo
+    {
+        /// <summary>
+        /// Gets the total number of invocations by the method associated with this instance.
+        /// </summary>
+        [FieldOffset(0)]
+        public long InvocationCount;
+
+        /// <summary>
+        /// Gets the total ticks taken to execute by the method associated with this instance over all invocations.
+        /// </summary>
+        [FieldOffset(8)]
+        public long TotalTicks;
+
+        /// <summary>
+        /// Gets the maximum tick count generated by the method associated with this instance.
+        /// </summary>
+        [FieldOffset(16)]
+        public long MaxTicks;
+
+        /// <summary>
+        /// Gets the method associated with this instance.
+        /// </summary>
+        /// <remarks>
+        /// <b>NEVER call this method unless you are using the struct by reference.</b>
+        /// <code>ref ProfileMethodPatch.ProfiledMethodInfo info = ref ProfileMethodPatch.ProfilerInfos[someIndex];</code>
+        /// </remarks>
+        public readonly MethodBase GetMyMethod
         {
-            if (!MethodMetrics.methodMetrics.TryGetValue(method, out MethodMetrics metrics))
+            get
             {
-                metrics = new MethodMetrics();
-                metrics.method = method;
-                metrics.name = (method.DeclaringType != null ? method.DeclaringType.FullName : "Unknown Type") + "." + method.Name;
-                MethodMetrics.methodMetrics.Add(method, metrics);
+                int myIndex;
+
+                fixed (ProfiledMethodInfo* info = &this)
+                {
+                    fixed (ProfiledMethodInfo* field = &ProfilerInfos[0])
+                    {
+                        myIndex = ((int)info - (int)field) / 24;
+                    }
+                }
+
+                ProfiledMethodsTracker.GetMethod(myIndex, out MethodBase result);
+                return result;
             }
-            metrics.invocationCount++;
-            metrics.tickCount += totalTicks;
-            if (!CustomProfilerPlugin.activeStacks.Contains(method) && metrics.calls.Count > 0) return;
-            StackTrace t = new StackTrace();
-            MethodBase callingMethod = t.FrameCount >= 3 && !t.GetFrame(2).GetMethod().Name.Contains("_Patch0") && !t.GetFrame(2).GetMethod().Name.Contains("_Patch1") ? t.GetFrame(2).GetMethod() : (t.FrameCount >= 4 && !t.GetFrame(3).GetMethod().Name.Contains("_Patch0") && !t.GetFrame(3).GetMethod().Name.Contains("_Patch1") ? t.GetFrame(3).GetMethod() : null);
-            if (callingMethod == null || t.FrameCount < 3) return;
-            if (!metrics.calls.TryGetValue(callingMethod, out MethodMetrics subMetrics))
-            {
-                subMetrics = new MethodMetrics();
-                subMetrics.methodBase = callingMethod;
-                subMetrics.name = (callingMethod.DeclaringType != null ? callingMethod.DeclaringType.FullName : "Unknown Type") + "." + callingMethod.Name;
-                metrics.calls.Add(callingMethod, subMetrics);
-            }
-            subMetrics.invocationCount++;
-            subMetrics.tickCount += totalTicks;
-        } catch (Exception e)
-        {
-            Log.Error(e.Message + "\n" + e.StackTrace);
         }
 
-        //Log.Info("Test: " + method.DeclaringType.Assembly.FullName + " - " + method.Name + " - " + method.DeclaringType);
-        // log any info you want about the method here.
-        // feel free to use StackTrace or StackFrame.
+        /// <summary>
+        /// Gets the average tick count for the method associated with this instance.
+        /// </summary>
+        public readonly long AvgTicks => TotalTicks / Math.Max(1, InvocationCount);
+    }
+
+    public static class ProfiledMethodsTracker
+    {
+        public static int MaxIndex => patchedCount - 1;
+
+        private static volatile int patchedCount = 0;
+
+        private static Dictionary<MethodBase, int> patched = new(4000);
+        private static Dictionary<int, MethodBase> byIndex = new(4000);
+
+        public static bool AddMethod(MethodBase method)
+        {
+            if (patched.ContainsKey(method))
+                return false;
+
+            int index = Interlocked.Exchange(ref patchedCount, patchedCount + 1);
+
+            patched.Add(method, index);
+            byIndex.Add(index, method);
+            return true;
+        }
+
+        public static bool GetMethodIndex(MethodBase method, out int index)
+        {
+            return patched.TryGetValue(method, out index);
+        }
+
+        public static bool GetMethod(int index, out MethodBase method)
+        {
+            return byIndex.TryGetValue(index, out method);
+        }
     }
 }

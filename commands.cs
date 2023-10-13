@@ -2,7 +2,10 @@
 
 using CommandSystem;
 using CustomProfiler.Metrics;
+using CustomProfiler.Patches;
+using PluginAPI.Core;
 using System;
+using System.Reflection;
 using ICommand = CommandSystem.ICommand;
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
