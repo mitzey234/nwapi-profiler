@@ -2,9 +2,9 @@
 using FacilitySoundtrack;
 using HarmonyLib;
 using Interactables.Interobjects.DoorUtils;
-using InventorySystem;
 using PlayerRoles.FirstPersonControl.Thirdperson;
 using PlayerRoles.Ragdolls;
+using PlayerRoles.Voice;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -29,6 +29,7 @@ public static class DisableSelfPatch
         yield return Method(typeof(DynamicRagdoll), "Update");
         yield return Method(typeof(AlphaWarheadNukesitePanel), "Update");
         yield return Method(typeof(AlphaWarheadOutsitePanel), "Update");
+        yield return Method(typeof(VoiceModuleBase), "Update");
         //yield return Method(typeof(PersonalRadioPlayback), nameof(PersonalRadioPlayback.Awake)); //Disable radio updates and let manual updater do it every second, potentially breaks the game / radios
     }
 

@@ -156,17 +156,6 @@ internal class BasicStuff
         }
     }
 
-    //Disable updater, replace with transpiler
-    [HarmonyPatch(typeof(VoiceModuleBase), "Update")]
-    internal class TestPatch26
-    {
-        public static bool Prefix(VoiceModuleBase __instance)
-        {
-            if (__instance.enabled) __instance.enabled = false;
-            return true;
-        }
-    }
-
     [HarmonyPatch(typeof(VoiceTransceiver))]
     public static class TestPatch27
     {
