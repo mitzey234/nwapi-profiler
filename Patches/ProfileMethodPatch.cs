@@ -3,10 +3,12 @@ namespace CustomProfiler.Patches;
 using CustomProfiler.Extensions;
 using CustomProfiler.Metrics;
 using HarmonyLib;
+using NorthwoodLib.Pools;
 using PluginAPI.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using static HarmonyLib.AccessTools;
@@ -17,6 +19,7 @@ public static class ProfileMethodPatch
 
     private static HarmonyMethod ProfilerTranspiler = new(typeof(ProfileMethodPatch), nameof(Transpiler));
 
+    private static HashSet<MethodBase> optimizedMethods;
     private static HashSet<MethodBase> ProfiledMethods = new();
     private static Dictionary<long, MethodBase> ProfiledMethodsByHash = new();
 
@@ -26,6 +29,15 @@ public static class ProfileMethodPatch
         {
             return;
         }
+
+        optimizedMethods ??= new(CustomProfilerPlugin.HarmonyOptimizations.GetPatchedMethods());
+
+        if (optimizedMethods.Contains(method))
+        {
+            return;
+        }
+
+        HashSetPool<MethodBase>.Shared.Return(optimizedMethods);
 
         if (method.GetMethodBody() == null)
         {
