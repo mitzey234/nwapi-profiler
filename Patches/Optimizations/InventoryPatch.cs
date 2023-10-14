@@ -4,14 +4,11 @@ using CustomProfiler.Extensions;
 using HarmonyLib;
 using InventorySystem;
 using InventorySystem.Items;
-using Mirror;
-using PlayerRoles.FirstPersonControl;
 using PluginAPI.Events;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using UnityEngine;
 using static HarmonyLib.AccessTools;
 
 [HarmonyPatch(typeof(Inventory))]
@@ -110,54 +107,5 @@ public static class InventoryPatch
         newInstructions.Insert(beginIndex, replacement);
 
         return newInstructions.FinishTranspiler();
-    }
-
-    [HarmonyTranspiler]
-    [HarmonyPatch(nameof(Inventory.RefreshModifiers))]
-    private static IEnumerable<CodeInstruction> RefreshModifiers_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
-    {
-        return new CodeInstruction[]
-        {
-            new(OpCodes.Ldarg_0),
-            new(OpCodes.Call, Method(typeof(InventoryPatch), nameof(RefreshModifiers))),
-            new(OpCodes.Ret),
-        };
-    }
-
-    private static void RefreshModifiers(Inventory _this)
-    {
-        if (!NetworkServer.active)
-            return;
-
-        if (Time.timeSinceLevelLoadAsDouble % 1f <= 0.5f)
-            return;
-
-        float staminaModifier = 1f;
-        float movementLimiter = float.MaxValue;
-        float movementMultiplier = 1f;
-        bool sprintingDisabled = false;
-
-        var enumerator = _this.UserInventory.Items.Values.GetEnumerator();
-
-        while (enumerator.MoveNext())
-        {
-            ItemBase item = enumerator.Current;
-
-            if (item is IStaminaModifier staminaModifierItem && staminaModifierItem.StaminaModifierActive)
-            {
-                staminaModifier *= staminaModifierItem.StaminaUsageMultiplier;
-                sprintingDisabled |= staminaModifierItem.SprintingDisabled;
-            }
-            if (item is IMovementSpeedModifier movementSpeedModifier && movementSpeedModifier.MovementModifierActive)
-            {
-                movementLimiter = Mathf.Min(_this._movementLimiter, movementSpeedModifier.MovementSpeedLimit);
-                movementMultiplier *= movementSpeedModifier.MovementSpeedMultiplier;
-            }
-        }
-
-        _this.Network_syncStaminaModifier = staminaModifier;
-        _this.Network_syncMovementLimiter = movementLimiter;
-        _this.Network_syncMovementMultiplier = movementMultiplier;
-        _this._sprintingDisabled = sprintingDisabled;
     }
 }
