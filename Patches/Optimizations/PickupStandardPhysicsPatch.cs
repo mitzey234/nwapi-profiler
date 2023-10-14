@@ -19,7 +19,7 @@ public static class PickupStandardPhysicsPatch
     {
         instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
 
-        newInstructions.FindLast((CodeInstruction x) => x.opcode == OpCodes.Ldc_R8).operand = 5f;
+        newInstructions.FindLast((CodeInstruction x) => x.opcode == OpCodes.Ldc_R8).operand = 5d;
 
         return newInstructions.FinishTranspiler();
     }
