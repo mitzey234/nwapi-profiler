@@ -3,6 +3,7 @@
 using HarmonyLib;
 using Mirror;
 using PlayerRoles;
+using PlayerRoles.FirstPersonControl;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -13,6 +14,23 @@ using static HarmonyLib.AccessTools;
 [HarmonyPatch]
 public static class TeslaGatePatch
 {
+    [HarmonyPatch(typeof(TeslaGate), "IsInIdleRange", typeof(ReferenceHub))]
+    private static class RefhubIsInIdleRange
+    {
+        private static bool Prefix(ReferenceHub player, TeslaGate __instance, ref bool __result)
+        {
+            ITeslaControllerRole teslaControllerRole = player.roleManager.CurrentRole as ITeslaControllerRole;
+            if (teslaControllerRole != null)
+            {
+                __result = teslaControllerRole.IsInIdleRange(__instance);
+                return false;
+            }
+            IFpcRole fpcRole = player.roleManager.CurrentRole as IFpcRole;
+            __result = fpcRole != null && __instance.IsInIdleRange(fpcRole.FpcModule.Position);
+            return false;
+        }
+    }
+
     [HarmonyTranspiler]
     [HarmonyPatch(typeof(TeslaGate), "IsInIdleRange", typeof(Vector3))]
     private static IEnumerable<CodeInstruction> IsInIdleRange_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
@@ -127,13 +145,14 @@ public static class TeslaGatePatch
             int h;
             for (h = 0; h < hubs.Length; h++)
             {
-                if (teslaGate.IsInIdleRange(hubs[h].transform.position))
+                //You have to use player ref hub, otherwise you ignore basegame interfaces such as the one for SCP 106
+                if (teslaGate.IsInIdleRange(hubs[h]))
                 {
                     isIdling = true;
                     goto ProcessIdling;
                 }
 
-                if (teslaGate.InRange(hubs[h].transform.position))
+                if (teslaGate.PlayerInRange(hubs[h]))
                 {
                     isTriggered = true;
                     isIdling = true;
@@ -144,7 +163,7 @@ public static class TeslaGatePatch
             ProcessIdling:
             for (; h < hubs.Length; h++)
             {
-                if (teslaGate.InRange(hubs[h].transform.position))
+                if (teslaGate.PlayerInRange(hubs[h]))
                 {
                     isTriggered = true;
                     return;
