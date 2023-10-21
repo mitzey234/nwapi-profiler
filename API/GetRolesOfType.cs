@@ -158,7 +158,7 @@ public static class GetRolesOfType
             RemoveNull();
         }
 
-        private static void RemoveNull() => Roles.RemoveAll(IsNull);
+        private static void RemoveNull() => _list.RemoveAll(IsNull);
 
         private static bool IsNull(T obj)
         {
