@@ -3,8 +3,12 @@
 using CommandSystem;
 using CustomProfiler.Metrics;
 using CustomProfiler.Patches;
+using MEC;
+using PlayerRoles.RoleAssign;
 using PluginAPI.Core;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using ICommand = CommandSystem.ICommand;
 
@@ -183,5 +187,74 @@ class memoryUpdates : ICommand, IHiddenCommand
         CustomProfilerPlugin.upcapped = !CustomProfilerPlugin.upcapped;
         response = CustomProfilerPlugin.upcapped ? "Enabling" : "Disabling";
         return true;
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+[CommandHandler(typeof(GameConsoleCommandHandler))]
+class resetLateJoin : ICommand, IHiddenCommand
+{
+    public string[] Aliases { get; set; } = new string[] { "rlj" };
+
+    public string Description { get; set; } = "Resets the latejoin timer";
+
+    public string usage { get; set; } = "resetlatejoin";
+
+    string ICommand.Command { get; } = "resetlatejoin";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        RoleAssigner.LateJoinTimer.Restart();
+        response = "Stopwatch Reset";
+        return true;
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+class ClearTestingNotice : ICommand
+{
+
+    public static CoroutineHandle noticeCo;
+
+    public string[] Aliases { get; set; } = { "ctn" };
+
+    public string Description { get; set; } = "Clears the testing notice broadcast";
+
+    String ICommand.Command { get; } = "clearTestingNotice";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        if (noticeCo.IsRunning) Timing.KillCoroutines(noticeCo);
+
+        response = "Notce stopped";
+        return true;
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+class BeginTestingNotice : ICommand
+{
+    public string[] Aliases { get; set; } = { "btn" };
+
+    public string Description { get; set; } = "Starts the testing notice broadcast";
+
+    String ICommand.Command { get; } = "begingTestingNotice";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        if (ClearTestingNotice.noticeCo.IsRunning) Timing.KillCoroutines(ClearTestingNotice.noticeCo);
+        ClearTestingNotice.noticeCo = Timing.RunCoroutine(NoticeLoop());
+
+        response = "Notice Started";
+        return true;
+    }
+
+    public IEnumerator<float> NoticeLoop()
+    {
+        while (true)
+        {
+            Map.Broadcast(duration: 2, message: "<color=yellow>---Server stress testing in progress---</color>", clearPrevius: false);
+            yield return Timing.WaitForSeconds(1.5f);
+        }
     }
 }
