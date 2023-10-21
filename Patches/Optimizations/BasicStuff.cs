@@ -250,11 +250,9 @@ internal class BasicStuff
         }
     }
 
+    /* If you want to see how often your sending player positions, uncomment this patch and it will print it to the console every second, though its based on how often GetNewSyncData is called so you might want to change things
     public static int count = 0;
-
     public static Stopwatch stopwatch = new Stopwatch();
-
-    //This disables updating posiitons when its not really necessary except when elevator is moving
     [HarmonyPatch(typeof(FpcServerPositionDistributor))]
     internal class TestPatch32
     {
@@ -268,8 +266,8 @@ internal class BasicStuff
                 Log.Debug("Rate: " + count/(stopwatch.ElapsedMilliseconds/1000) + " - " + FpcServerPositionDistributor.SendRate);
                 count = 0;
                 stopwatch.Restart();
-                //Log.Debug(Environment.StackTrace);
             }
         }
     }
+    */
 }
