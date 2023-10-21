@@ -167,12 +167,10 @@ public static class FpcPositionDistributorPatch
 
             bool invisible = canValidateVisibility && !visibilityController.ValidateVisibility(fpcRole._lastOwner);
 
-            FpcSyncData syncData = GetNewSyncData(receiver, fpcRole._lastOwner, fpcRole.FpcModule, invisible);
-
             if (!invisible)
             {
                 FpcServerPositionDistributor._bufferPlayerIDs[totalSent] = (byte)fpcRole._lastOwner.PlayerId;
-                FpcServerPositionDistributor._bufferSyncData[totalSent++] = syncData;
+                FpcServerPositionDistributor._bufferSyncData[totalSent++] = GetNewSyncData(receiver, fpcRole._lastOwner, fpcRole.FpcModule, invisible);
             }
         }
 
