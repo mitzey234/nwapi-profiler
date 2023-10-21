@@ -30,9 +30,11 @@ using static HarmonyLib.AccessTools;
 internal class BasicStuff
 {
 
-    //This stops doing pointless math calulations, probbaly causes desync in terms of max movement speed
-    [HarmonyPatch(typeof(PlayerRoles.FirstPersonControl.FirstPersonMovementModule))]
-    [HarmonyPatch("MaxMovementSpeed", MethodType.Getter)]
+    // This causes SCP-939 to be able to see players from any distance as long
+    // as they have been seen previously, causing a serious disadvantage
+    // for human classes.
+    //[HarmonyPatch(typeof(PlayerRoles.FirstPersonControl.FirstPersonMovementModule))]
+    //[HarmonyPatch("MaxMovementSpeed", MethodType.Getter)]
     class TestPatch1
     {
         public static bool Prefix(ref float __result)
