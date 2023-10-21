@@ -2,15 +2,23 @@
 
 using CustomPlayerEffects;
 using CustomProfiler.Extensions;
+using Elevators;
 using HarmonyLib;
+using Hazards;
 using InventorySystem.Items.Armor;
 using InventorySystem.Items.Firearms.Attachments;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244;
 using MapGeneration.Distributors;
+using PlayerRoles;
+using PlayerRoles.FirstPersonControl;
+using PlayerRoles.FirstPersonControl.NetworkMessages;
 using PlayerRoles.Voice;
 using PluginAPI.Core;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -207,6 +215,61 @@ internal class BasicStuff
             if (time <= 1f) return false;
             time -= 1f;
             return true;
+        }
+    }
+
+    //This disables updating posiitons when its not really necessary except when elevator is moving
+    [HarmonyPatch(typeof(ElevatorFollowerBase))]
+    internal class TestPatch31
+    {
+        [HarmonyPatch(nameof(ElevatorFollowerBase.OnElevatorMoved))]
+        public static void Postfix(ElevatorFollowerBase __instance)
+        {
+            if (!__instance.InElevator || __instance.TrackedChamber._curSequence == Interactables.Interobjects.ElevatorChamber.ElevatorSequence.Ready)
+            {
+                if (__instance.enabled)
+                {
+                    __instance.enabled = false;
+                }
+            }
+            else if (!__instance.enabled)
+            {
+                __instance.enabled = true;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(FpcServerPositionDistributor))]
+    [HarmonyPatch("SendRate", MethodType.Getter)]
+    class TestPatch33
+    {
+        public static bool Prefix(ref float __result)
+        {
+            __result = 1f / Mathf.Clamp(CustomProfilerPlugin.PluginConfig.PlayerPositionUpdateRate, 10, 60); ;
+            return false;
+        }
+    }
+
+    public static int count = 0;
+
+    public static Stopwatch stopwatch = new Stopwatch();
+
+    //This disables updating posiitons when its not really necessary except when elevator is moving
+    [HarmonyPatch(typeof(FpcServerPositionDistributor))]
+    internal class TestPatch32
+    {
+        [HarmonyPatch(nameof(FpcServerPositionDistributor.GetNewSyncData))]
+        public static void Postfix(ElevatorFollowerBase __instance)
+        {
+            if (!stopwatch.IsRunning) stopwatch.Start();
+            count++;
+            if (stopwatch.ElapsedMilliseconds >= 1000)
+            {
+                Log.Debug("Rate: " + count/(stopwatch.ElapsedMilliseconds/1000) + " - " + FpcServerPositionDistributor.SendRate);
+                count = 0;
+                stopwatch.Restart();
+                //Log.Debug(Environment.StackTrace);
+            }
         }
     }
 }

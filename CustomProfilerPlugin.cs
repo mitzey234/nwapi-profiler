@@ -52,6 +52,9 @@ public sealed class CustomProfilerPlugin
 
     public static bool updateFields = false;
 
+    [PluginConfig]
+    public static Config PluginConfig;
+
     [PluginEntryPoint("CustomProfiler", Version, "A custom profiler for SCP:SL.", "Zereth")]
     [PluginPriority(LoadPriority.Highest)]
     public void Entry()
