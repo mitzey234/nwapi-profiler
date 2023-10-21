@@ -10,7 +10,6 @@ using PlayerRoles.FirstPersonControl;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
 using PlayerRoles.Visibility;
 using RelativePositioning;
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -90,8 +89,8 @@ public static class FpcPositionDistributorPatch
     [HarmonyPrepare]
     private static void Init()
     {
-        FpcServerPositionDistributor._bufferSyncData = null;//new FpcSyncData[PotentialMaxPlayers];
-        FpcServerPositionDistributor._bufferPlayerIDs = null;//new int[PotentialMaxPlayers];
+        FpcServerPositionDistributor._bufferSyncData = new FpcSyncData[PotentialMaxPlayers];
+        FpcServerPositionDistributor._bufferPlayerIDs = new int[PotentialMaxPlayers];
 
         ReferenceHub.OnPlayerAdded += OnPlayerAdded;
         ReferenceHub.OnPlayerRemoved += OnPlayerRemoved;
@@ -160,9 +159,6 @@ public static class FpcPositionDistributorPatch
 
         List<FpcStandardRoleBase> roles = GetRolesOfType.Get<FpcStandardRoleBase>();
 
-        Span<byte> _bufferPlayerIDs = stackalloc byte[roles.Count];
-        Span<FpcSyncData> _bufferSyncData = stackalloc FpcSyncData[roles.Count];
-
         for (int i = 0; i < roles.Count; i++)
         {
             FpcStandardRoleBase fpcRole = roles[i];
@@ -177,8 +173,8 @@ public static class FpcPositionDistributorPatch
 
             if (!invisible)
             {
-                _bufferPlayerIDs[totalSent] = (byte)fpcRole._lastOwner.PlayerId;
-                _bufferSyncData[totalSent++] = GetNewSyncData(receiver, fpcRole._lastOwner, fpcRole.FpcModule, invisible);
+                FpcServerPositionDistributor._bufferPlayerIDs[totalSent] = (byte)fpcRole._lastOwner.PlayerId;
+                FpcServerPositionDistributor._bufferSyncData[totalSent++] = GetNewSyncData(receiver, fpcRole._lastOwner, fpcRole.FpcModule, invisible);
             }
         }
 
@@ -186,8 +182,8 @@ public static class FpcPositionDistributorPatch
 
         for (int i = 0; i < totalSent;)
         {
-            writer.WriteByte(_bufferPlayerIDs[i]);
-            _bufferSyncData[i++].Write(writer);
+            writer.WriteByte((byte)FpcServerPositionDistributor._bufferPlayerIDs[i]);
+            FpcServerPositionDistributor._bufferSyncData[i++].Write(writer);
         }
     }
 
