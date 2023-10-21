@@ -2,6 +2,7 @@
 
 using HarmonyLib;
 using Mirror;
+using NorthwoodLib.Pools;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using System.Collections.Generic;
@@ -14,23 +15,6 @@ using static HarmonyLib.AccessTools;
 [HarmonyPatch]
 public static class TeslaGatePatch
 {
-    [HarmonyPatch(typeof(TeslaGate), "IsInIdleRange", typeof(ReferenceHub))]
-    private static class RefhubIsInIdleRange
-    {
-        private static bool Prefix(ReferenceHub player, TeslaGate __instance, ref bool __result)
-        {
-            ITeslaControllerRole teslaControllerRole = player.roleManager.CurrentRole as ITeslaControllerRole;
-            if (teslaControllerRole != null)
-            {
-                __result = teslaControllerRole.IsInIdleRange(__instance);
-                return false;
-            }
-            IFpcRole fpcRole = player.roleManager.CurrentRole as IFpcRole;
-            __result = fpcRole != null && __instance.IsInIdleRange(fpcRole.FpcModule.Position);
-            return false;
-        }
-    }
-
     [HarmonyTranspiler]
     [HarmonyPatch(typeof(TeslaGate), "IsInIdleRange", typeof(Vector3))]
     private static IEnumerable<CodeInstruction> IsInIdleRange_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
@@ -106,7 +90,7 @@ public static class TeslaGatePatch
             if (!NetworkServer.active)
                 return;
 
-            var aliveHubs = ReferenceHub.AllHubs.Where(PlayerRolesUtils.IsAlive).ToArray();
+            var aliveHubs = ListPool<ReferenceHub>.Shared.Rent(ReferenceHub.AllHubs.Where(PlayerRolesUtils.IsAlive));
 
             for (int i = 0; i < _this.TeslaGates.Count; i++)
             {
@@ -135,15 +119,17 @@ public static class TeslaGatePatch
                 if (isIdling != teslaGate.isIdling)
                     teslaGate.ServerSideIdle(isIdling);
             }
+
+            ListPool<ReferenceHub>.Shared.Return(aliveHubs);
         }
 
-        private static void ProcessNotInProgress(ReferenceHub[] hubs, TeslaGate teslaGate, out bool isIdling, out bool isTriggered)
+        private static void ProcessNotInProgress(List<ReferenceHub> hubs, TeslaGate teslaGate, out bool isIdling, out bool isTriggered)
         {
             isIdling = false;
             isTriggered = false;
 
             int h;
-            for (h = 0; h < hubs.Length; h++)
+            for (h = 0; h < hubs.Count; h++)
             {
                 //You have to use player ref hub, otherwise you ignore basegame interfaces such as the one for SCP 106
                 if (teslaGate.IsInIdleRange(hubs[h]))
@@ -161,7 +147,7 @@ public static class TeslaGatePatch
             }
 
             ProcessIdling:
-            for (; h < hubs.Length; h++)
+            for (; h < hubs.Count; h++)
             {
                 if (teslaGate.PlayerInRange(hubs[h]))
                 {
