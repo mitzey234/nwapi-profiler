@@ -113,13 +113,17 @@ public static class FpcPositionDistributorPatch
     [HarmonyPatch(nameof(FpcServerPositionDistributor.WriteAll))]
     private static IEnumerable<CodeInstruction> WriteAll_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {
-        return new CodeInstruction[]
+        instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
+
+        newInstructions.InsertRange(0, new CodeInstruction[]
         {
             new(OpCodes.Ldarg_0),
             new(OpCodes.Ldarg_1),
             new(OpCodes.Call, Method(typeof(FpcPositionDistributorPatch), nameof(CustomWriteAll))),
             new(OpCodes.Ret),
-        };
+        });
+
+        return newInstructions.FinishTranspiler();
     }
 
     [HarmonyTranspiler]
