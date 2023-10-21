@@ -1,4 +1,6 @@
 ﻿namespace CustomProfiler.Patches;
+
+using CustomProfiler.Extensions;
 using FacilitySoundtrack;
 using HarmonyLib;
 using Interactables.Interobjects.DoorUtils;
@@ -29,7 +31,6 @@ public static class DisableSelfPatch
         yield return Method(typeof(DynamicRagdoll), "Update");
         yield return Method(typeof(AlphaWarheadNukesitePanel), "Update");
         yield return Method(typeof(AlphaWarheadOutsitePanel), "Update");
-        yield return Method(typeof(VoiceModuleBase), "Update");
         //yield return Method(typeof(PersonalRadioPlayback), nameof(PersonalRadioPlayback.Awake)); //Disable radio updates and let manual updater do it every second, potentially breaks the game / radios
     }
 
@@ -44,5 +45,29 @@ public static class DisableSelfPatch
             new(OpCodes.Call, PropertySetter(typeof(Behaviour), nameof(Behaviour.enabled))),
             new(OpCodes.Ret),
         };
+    }
+}
+
+[HarmonyPatch]
+public static class DisableSelfPatchButContinue
+{
+    private static IEnumerable<MethodInfo> TargetMethods()
+    {
+        yield return Method(typeof(VoiceModuleBase), "Update");
+    }
+
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
+    {
+        instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
+
+        newInstructions.InsertRange(0, new CodeInstruction[]
+        {
+            // this.enabled = false;
+            new(OpCodes.Ldarg_0),
+            new(OpCodes.Ldc_I4_0),
+            new(OpCodes.Call, PropertySetter(typeof(Behaviour), nameof(Behaviour.enabled))),
+        });
+
+        return newInstructions.FinishTranspiler();
     }
 }

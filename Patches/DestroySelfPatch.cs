@@ -11,6 +11,7 @@ using UnityEngine;
 using VoiceChat;
 using static HarmonyLib.AccessTools;
 using UnityEngine.Rendering.HighDefinition;
+using FacilitySoundtrack;
 
 /// <summary>
 /// This patch automatically forces objects to destroy themselves.
@@ -27,6 +28,7 @@ public static class DestroySelfPatch
         yield return Method(typeof(EnvMimicryStandardButton), "Awake");
         yield return Method(typeof(HumeShieldBarController), "Awake");
         yield return Method(typeof(VoiceChatMicCapture), "Awake");
+        yield return Method(typeof(Scp173InsanitySoundtrack), "Awake");
         yield return Method(typeof(StatusBar), "Update");
         yield return Method(typeof(HDAdditionalLightData), "Awake");
     }

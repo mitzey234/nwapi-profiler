@@ -9,6 +9,7 @@ using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244;
 using MapGeneration.Distributors;
 using PlayerRoles.Voice;
+using PluginAPI.Core;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
