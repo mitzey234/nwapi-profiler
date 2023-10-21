@@ -141,7 +141,6 @@ public static class GetRolesOfType
         {
             get
             {
-                RemoveNull();
                 return _list;
             }
         }
