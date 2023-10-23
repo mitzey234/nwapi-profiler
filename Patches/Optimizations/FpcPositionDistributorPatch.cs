@@ -5,6 +5,7 @@ using CustomProfiler.Extensions;
 using HarmonyLib;
 using InventorySystem;
 using Mirror;
+using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
 using PlayerRoles.Visibility;
@@ -35,6 +36,9 @@ public static class FpcPositionDistributorPatch
     {
         FpcServerPositionDistributor._bufferSyncData = new FpcSyncData[PlayerListUtils.MaxPlayers];
         FpcServerPositionDistributor._bufferPlayerIDs = new int[PlayerListUtils.MaxPlayers];
+
+        PlayerRoleManager.OnRoleChanged -= FpcServerPositionDistributor.ResetPlayer;
+        Inventory.OnServerStarted -= FpcServerPositionDistributor.PreviouslySent.Clear;
 
         Inventory.OnServerStarted += ClearCachedRelativePositions;
     }
