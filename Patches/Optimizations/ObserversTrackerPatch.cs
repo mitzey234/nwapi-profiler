@@ -24,8 +24,6 @@ public static class ObserversTrackerPatch
         };
     }
 
-    [HarmonyTranspiler]
-    [HarmonyPatch(nameof(Scp173ObserversTracker.IsObservedBy))]
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {
         instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
