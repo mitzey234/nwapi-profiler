@@ -13,6 +13,8 @@ using MapGeneration.Distributors;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
+using PlayerRoles.PlayableScps.Scp079;
+using PlayerRoles.PlayableScps.Scp079.Cameras;
 using PlayerRoles.Voice;
 using PluginAPI.Core;
 using System;
@@ -23,6 +25,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using Utils.NonAllocLINQ;
 using VoiceChat.Networking;
 using static HarmonyLib.AccessTools;
 
@@ -248,6 +251,32 @@ internal class BasicStuff
         public static bool Prefix(ref float __result)
         {
             __result = 1f / Mathf.Clamp(CustomProfilerPlugin.PluginConfig.PlayerPositionUpdateRate, 10, 60); ;
+            return false;
+        }
+    }
+
+    //For some reason Northwood's code will update all of the angles for every single camera in the facility regardless of whether its active or not
+    //This patch makes it so it will only do that when the camera is active, saving at least a little performance
+    //If this breaks something (which I don't think it will) feel free to delete this whole file.
+    [HarmonyPatch(typeof(Scp079Camera), "Update")]
+    internal class TestPatch34
+    {
+        public static bool Prefix(Scp079Camera __instance)
+        {
+            if (!__instance.IsActive) return false;
+            __instance.VerticalAxis.Update(__instance);
+            __instance.HorizontalAxis.Update(__instance);
+            __instance.ZoomAxis.Update(__instance);
+            if (Scp079Role.ActiveInstances.All((Scp079Role x) => x.CurrentCamera != __instance, true))
+            {
+                __instance.IsActive = false;
+                return false;
+            }
+            Vector3 eulerAngles = __instance._cameraAnchor.rotation.eulerAngles;
+            __instance.VerticalRotation = eulerAngles.x;
+            __instance.HorizontalRotation = eulerAngles.y;
+            __instance.RollRotation = eulerAngles.z;
+            __instance.CameraPosition = __instance._cameraAnchor.position;
             return false;
         }
     }
