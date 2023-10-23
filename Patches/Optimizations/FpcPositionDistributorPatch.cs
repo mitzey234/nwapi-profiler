@@ -5,14 +5,15 @@ using CustomProfiler.Extensions;
 using HarmonyLib;
 using InventorySystem;
 using Mirror;
-using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
 using PlayerRoles.Visibility;
 using RelativePositioning;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using UnityEngine;
 using static HarmonyLib.AccessTools;
 
 [HarmonyPatch(typeof(FpcServerPositionDistributor))]
@@ -20,25 +21,8 @@ public static class FpcPositionDistributorPatch
 {
     public const int PotentialMaxPlayers = 110;
 
-    private static readonly FpcSyncData[] PreviouslySent = new FpcSyncData[PotentialMaxPlayers * PotentialMaxPlayers];
     private static readonly RelativePosition[] CachedRelativePositions = new RelativePosition[PotentialMaxPlayers];
     private static readonly bool[] IsCached = new bool[PotentialMaxPlayers];
-
-    private static void ClearPreviouslySent()
-    {
-        int i;
-
-        for (i = 0; i < PotentialMaxPlayers * PotentialMaxPlayers;)
-        {
-            PreviouslySent[i++] = default;
-        }
-
-        for (i = 0; i < PotentialMaxPlayers;)
-        {
-            CachedRelativePositions[i] = default;
-            IsCached[i++] = false;
-        }
-    }
 
     private static void ClearCachedRelativePositions()
     {
@@ -49,53 +33,13 @@ public static class FpcPositionDistributorPatch
         }
     }
 
-    private static void OnRoleChanged(ReferenceHub hub, PlayerRoleBase oldRole, PlayerRoleBase newRole)
-    {
-        if (oldRole is not IFpcRole)
-            return;
-
-        for (int i = (hub.PlayerId - 1) * PotentialMaxPlayers; i < PotentialMaxPlayers; i++)
-        {
-            PreviouslySent[i] = default;
-        }
-    }
-
-    private static void OnPlayerAdded(ReferenceHub hub)
-    {
-        for (int i = (hub.PlayerId - 1) * PotentialMaxPlayers; i < PotentialMaxPlayers; i++)
-        {
-            PreviouslySent[i] = default;
-        }
-
-        for (int i = hub.PlayerId - 1; i < (PotentialMaxPlayers * PotentialMaxPlayers); i += PotentialMaxPlayers)
-        {
-            PreviouslySent[i] = default;
-        }
-    }
-
-    private static void OnPlayerRemoved(ReferenceHub hub)
-    {
-        for (int i = (hub.PlayerId - 1) * PotentialMaxPlayers; i < PotentialMaxPlayers; i++)
-        {
-            PreviouslySent[i] = default;
-        }
-
-        for (int i = hub.PlayerId - 1; i < (PotentialMaxPlayers * PotentialMaxPlayers); i += PotentialMaxPlayers)
-        {
-            PreviouslySent[i] = default;
-        }
-    }
-
     [HarmonyPrepare]
     private static void Init()
     {
         FpcServerPositionDistributor._bufferSyncData = new FpcSyncData[PotentialMaxPlayers];
         FpcServerPositionDistributor._bufferPlayerIDs = new int[PotentialMaxPlayers];
 
-        ReferenceHub.OnPlayerAdded += OnPlayerAdded;
-        ReferenceHub.OnPlayerRemoved += OnPlayerRemoved;
-        PlayerRoleManager.OnRoleChanged += OnRoleChanged;
-        Inventory.OnServerStarted += ClearPreviouslySent;
+        Inventory.OnServerStarted += ClearCachedRelativePositions;
     }
 
     [HarmonyTranspiler]
@@ -131,13 +75,38 @@ public static class FpcPositionDistributorPatch
     {
         instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
 
-        newInstructions.InsertRange(newInstructions.Count - 1, new CodeInstruction[]
+        newInstructions.InsertRange(0, new CodeInstruction[]
         {
-            new CodeInstruction(OpCodes.Call, Method(typeof(FpcPositionDistributorPatch), nameof(ClearCachedRelativePositions)))
-                .MoveLabelsFrom(newInstructions[newInstructions.Count - 1]),
+            new(OpCodes.Call, Method(typeof(FpcPositionDistributorPatch), nameof(CustomLateUpdate))),
+            new(OpCodes.Ret),
         });
 
         return newInstructions.FinishTranspiler();
+    }
+
+    public static void CustomLateUpdate()
+    {
+        if (!NetworkServer.active || !StaticUnityMethods.IsPlaying)
+        {
+            return;
+        }
+
+        FpcServerPositionDistributor._sendCooldown += Time.deltaTime;
+        if (FpcServerPositionDistributor._sendCooldown < FpcServerPositionDistributor.SendRate)
+        {
+            return;
+        }
+
+        FpcServerPositionDistributor._sendCooldown -= FpcServerPositionDistributor.SendRate;
+
+        for (int i = 0; i < PlayerListUtils.VerifiedHubs.Count; i++)
+        {
+            ReferenceHub hub = PlayerListUtils.VerifiedHubs[i];
+
+            hub.connectionToClient.Send(new FpcPositionMessage(hub));
+        }
+
+        ClearCachedRelativePositions();
     }
 
     private static void CustomWriteAll(ReferenceHub receiver, NetworkWriter writer)
@@ -145,6 +114,9 @@ public static class FpcPositionDistributorPatch
         ushort totalSent = 0;
         bool canValidateVisibility;
         VisibilityController visibilityController;
+
+        Span<int> bufferIds = FpcServerPositionDistributor._bufferPlayerIDs;
+        Span<FpcSyncData> bufferSyncData = FpcServerPositionDistributor._bufferSyncData;
 
         if (receiver.roleManager.CurrentRole is ICustomVisibilityRole customVisibilityRole)
         {
@@ -169,12 +141,16 @@ public static class FpcPositionDistributorPatch
             if (fpcRole._lastOwner.netId == receiver.netId)
                 continue;
 
-            bool invisible = canValidateVisibility && !visibilityController.ValidateVisibility(fpcRole._lastOwner);
-
-            if (!invisible)
+            if (!canValidateVisibility || visibilityController.ValidateVisibility(fpcRole._lastOwner))
             {
-                FpcServerPositionDistributor._bufferPlayerIDs[totalSent] = (byte)fpcRole._lastOwner.PlayerId;
-                FpcServerPositionDistributor._bufferSyncData[totalSent++] = GetNewSyncData(receiver, fpcRole._lastOwner, fpcRole.FpcModule, invisible);
+                bufferIds[totalSent] = (byte)fpcRole._lastOwner.PlayerId;
+
+                bufferSyncData[totalSent++] =
+                    new(default,
+                    fpcRole.FpcModule.SyncMovementState,
+                    fpcRole.FpcModule.IsGrounded,
+                    GetCachedRelativePosition(fpcRole._lastOwner),
+                    fpcRole.FpcModule.MouseLook);
             }
         }
 
@@ -182,21 +158,9 @@ public static class FpcPositionDistributorPatch
 
         for (int i = 0; i < totalSent;)
         {
-            writer.WriteByte((byte)FpcServerPositionDistributor._bufferPlayerIDs[i]);
-            FpcServerPositionDistributor._bufferSyncData[i++].Write(writer);
+            writer.WriteByte((byte)bufferIds[i]);
+            bufferSyncData[i++].Write(writer);
         }
-    }
-
-    private static FpcSyncData GetNewSyncData(ReferenceHub receiver, ReferenceHub target, FirstPersonMovementModule fpmm, bool isInvisible)
-    {
-        ref FpcSyncData prevSyncData = ref GetPrevSyncData(receiver, target);
-
-        return prevSyncData = isInvisible ? default : new(prevSyncData, fpmm.SyncMovementState, fpmm.IsGrounded, GetCachedRelativePosition(target), fpmm.MouseLook);
-    }
-
-    private static ref FpcSyncData GetPrevSyncData(ReferenceHub receiver, ReferenceHub target)
-    {
-        return ref PreviouslySent[((receiver.PlayerId - 1) * PotentialMaxPlayers) + (target.PlayerId - 1)];
     }
 
     private static RelativePosition GetCachedRelativePosition(ReferenceHub hub)

@@ -5,7 +5,6 @@ using NorthwoodLib.Pools;
 using PluginAPI.Core;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using static CustomProfiler.Patches.ProfileMethodPatch;
 
@@ -15,7 +14,7 @@ public class MethodMetrics
     {
         StringBuilder builder = StringBuilderPool.Shared.Rent();
 
-        IEnumerable<AsRef<ProfiledMethodInfo>> enumerable = GetProfilerInfos();
+        List<AsRef<ProfiledMethodInfo>> enumerable = GetProfilerInfos().ToList();
 
         int count = 0;
         var sortedDict = from entry in enumerable orderby entry.Value.InvocationCount descending select entry;
@@ -25,9 +24,9 @@ public class MethodMetrics
         foreach (AsRef<ProfiledMethodInfo> asRefInfo in sortedDict)
         {
             ref ProfiledMethodInfo info = ref asRefInfo.Value;
-            MethodBase method = info.GetMyMethod;
+            string method = info.GetMyMethod;
 
-            builder.AppendLine($"{method.DeclaringType.Name}.{method.Name} - {info.InvocationCount} - Avg. Ticks Per: {info.AvgTicks}");
+            builder.AppendLine($"{method} - {info.InvocationCount} - Avg. Ticks Per: {info.AvgTicks}");
 
             if (count++ > 10)
                 break;
@@ -42,9 +41,9 @@ public class MethodMetrics
         foreach (AsRef<ProfiledMethodInfo> asRefInfo in sortedDict)
         {
             ref ProfiledMethodInfo info = ref asRefInfo.Value;
-            MethodBase method = info.GetMyMethod;
+            string method = info.GetMyMethod;
 
-            builder.AppendLine($"{method.DeclaringType.Name}.{method.Name} - {info.TotalTicks} - Avg. Ticks Per: {info.AvgTicks}");
+            builder.AppendLine($"{method} - {info.TotalTicks} - Avg. Ticks Per: {info.AvgTicks}");
 
             if (count++ > 10)
                 break;
@@ -59,9 +58,9 @@ public class MethodMetrics
         foreach (AsRef<ProfiledMethodInfo> asRefInfo in sortedDict)
         {
             ref ProfiledMethodInfo info = ref asRefInfo.Value;
-            MethodBase method = info.GetMyMethod;
+            string method = info.GetMyMethod;
 
-            builder.AppendLine($"{method.DeclaringType.Name}.{method.Name} - {info.AvgTicks} - Invocation count: {info.InvocationCount}");
+            builder.AppendLine($"{method} - {info.AvgTicks} - Invocation count: {info.InvocationCount}");
 
             if (count++ > 10)
                 break;
@@ -76,9 +75,9 @@ public class MethodMetrics
         foreach (AsRef<ProfiledMethodInfo> asRefInfo in sortedDict)
         {
             ref ProfiledMethodInfo info = ref asRefInfo.Value;
-            MethodBase method = info.GetMyMethod;
+            string method = info.GetMyMethod;
 
-            builder.AppendLine($"{method.DeclaringType.Name}.{method.Name} - {info.MaxTicks} - Invocation count: {info.InvocationCount}");
+            builder.AppendLine($"{method} - {info.MaxTicks} - Invocation count: {info.InvocationCount}");
 
             if (count++ > 10)
                 break;

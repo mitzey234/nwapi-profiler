@@ -3,27 +3,30 @@ namespace CustomProfiler.Patches;
 using CustomProfiler.API;
 using CustomProfiler.Extensions;
 using HarmonyLib;
-using NorthwoodLib.Pools;
 using PluginAPI.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
+using static CustomProfiler.Extensions.TranspilerExtensions;
 using static HarmonyLib.AccessTools;
 
 public static class ProfileMethodPatch
 {
+    public const int MaxPatches = 5000;
+
     internal static bool DisableProfiler = false;
 
-    private static ProfiledMethodInfo[] ProfilerInfos = new ProfiledMethodInfo[7000];
+    private static ProfiledMethodInfo[] ProfilerInfos = new ProfiledMethodInfo[MaxPatches];
 
-    private static HarmonyMethod ProfilerTranspiler = new(typeof(ProfileMethodPatch), nameof(Transpiler));
+    private static readonly HarmonyMethod ProfilerTranspiler = new(typeof(ProfileMethodPatch), nameof(Transpiler));
 
-    private static HashSet<MethodBase> OptimizedMethods;
+    private static HashSet<int> OptimizedMethods;
 
     internal static IEnumerable<AsRef<ProfiledMethodInfo>> GetProfilerInfos()
     {
@@ -42,9 +45,9 @@ public static class ProfileMethodPatch
             throw new Exception("Failed to add method.");
         }
 
-        OptimizedMethods ??= new(CustomProfilerPlugin.HarmonyOptimizations.GetPatchedMethods());
+        OptimizedMethods ??= new(CustomProfilerPlugin.HarmonyOptimizations.GetPatchedMethods().Select(x => x.GetHashCode()).Distinct());
 
-        if (OptimizedMethods.Contains(method))
+        if (OptimizedMethods.Contains(method.GetHashCode()))
         {
             return;
         }
@@ -99,7 +102,6 @@ public static class ProfileMethodPatch
 
         // long startTimestamp;
         LocalBuilder startTimestamp = generator.DeclareLocal(typeof(long));
-        LocalBuilder profilerDisabled = generator.DeclareLocal(typeof(bool));
 
         Label profilerDisabledLabel = generator.DefineLabel();
 
@@ -109,14 +111,11 @@ public static class ProfileMethodPatch
         // and store it into a variable we can use later.
         newInstuctions.InsertRange(0, new CodeInstruction[]
         {
-            // bool profilerDisabled = ProfileMethodPatch.DisableProfiler;
-            // if (!profilerDisabled)
+            // if (!ProfileMethodPatch.DisableProfiler)
             // {
             //     long startTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
             // }
             new(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(DisableProfiler))),
-            new(OpCodes.Dup),
-            new(OpCodes.Stloc_S, profilerDisabled),
             new(OpCodes.Brtrue_S, profilerDisabledLabel),
             new(OpCodes.Call, Method(typeof(Stopwatch), nameof(Stopwatch.GetTimestamp))),
             new(OpCodes.Stloc_S, startTimestamp),
@@ -124,33 +123,89 @@ public static class ProfileMethodPatch
 
         int index = newInstuctions.FindLastIndex(x => x.opcode == OpCodes.Ret);
 
-        // For each return instruction, we steal its labels
-        // and insert a profile call to store the recorded time
-        // taken by the method to execute.
+        Label returnIfProfilerDisabled = generator.DefineLabel();
+        Label doProfilerCheck = generator.DefineLabel();
+        Label shouldAssign = generator.DefineLabel();
+        List<Label> originalReturnLabels = newInstuctions[index].ExtractLabels();
+
+        newInstuctions[index].labels.Add(returnIfProfilerDisabled);
+
+        // if (!ProfileMethodPatch.DisableProfiler)
+        // {
+        //     long totalTicks = Stopwatch.GetTimestamp() - startTimestamp;
+        //
+        //     ref ProfiledMethodInfo profilerInfo = ref ProfileMethodPatch.ProfilerInfos[methodIndex];
+        //
+        //     profilerInfo.InvocationCount++;
+        //     profilerInfo.TotalTicks += (uint)totalTicks;
+        //
+        //     if (profilerInfo.MaxTicks < (uint)totalTicks)
+        //     {
+        //         profilerInfo.MaxTicks = (uint)totalTicks;
+        //     }
+        // }
+        newInstuctions.InsertRange(index, new CodeInstruction[]
+        {
+            new CodeInstruction(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(DisableProfiler)))
+                .WithLabels(doProfilerCheck).WithLabels(originalReturnLabels),
+            new(OpCodes.Brtrue_S, returnIfProfilerDisabled),
+
+            // long totalTicks = Stopwatch.GetTimestamp() - startTimestamp;
+            new(OpCodes.Call, Method(typeof(Stopwatch), nameof(Stopwatch.GetTimestamp))),
+            new(OpCodes.Ldloc_S, startTimestamp),
+            new(OpCodes.Sub),
+            new(OpCodes.Stloc_S, startTimestamp),
+
+            // ref ProfiledMethodInfo profilerInfo = ref ProfileMethodPatch.ProfilerInfos[methodIndex];
+            new(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(ProfilerInfos))),
+            new(OpCodes.Ldc_I4, methodIndex),
+            new(OpCodes.Ldelema, typeof(ProfiledMethodInfo)),
+            new(OpCodes.Dup),
+
+            // profilerInfo.InvocationCount++;
+            new(OpCodes.Ldflda, Field(typeof(ProfiledMethodInfo), nameof(ProfiledMethodInfo.InvocationCount))),
+            new(OpCodes.Dup),
+            new(OpCodes.Ldind_U4),
+            new(OpCodes.Ldc_I4_1),
+            new(OpCodes.Add),
+            new(OpCodes.Stind_I4),
+
+            // profilerInfo.TotalTicks += (uint)totalTicks;
+            new(OpCodes.Dup),
+            new(OpCodes.Ldflda, Field(typeof(ProfiledMethodInfo), nameof(ProfiledMethodInfo.TotalTicks))),
+            new(OpCodes.Dup),
+            new(OpCodes.Ldind_U4),
+            new(OpCodes.Ldloc_S, startTimestamp),
+            new(OpCodes.Conv_U4),
+            new(OpCodes.Add),
+            new(OpCodes.Stind_I4),
+
+            // if (profilerInfo.MaxTicks < (uint)totalTicks)
+            // {
+            //     profilerInfo.MaxTicks = (uint)totalTicks;
+            // }
+            new(OpCodes.Ldflda, Field(typeof(ProfiledMethodInfo), nameof(ProfiledMethodInfo.MaxTicks))),// [uint&] MaxTicks
+            new(OpCodes.Dup), // [uint&] MaxTicks | [uint&] MaxTicks
+            new(OpCodes.Ldind_U4), // [uint&] MaxTicks | [uint] MaxTicks
+            new(OpCodes.Ldloc_S, startTimestamp), // [uint&] MaxTicks | [uint] MaxTicks | [long] total
+            new(OpCodes.Conv_U4), // [uint&] MaxTicks | [uint] MaxTicks | [uint] total
+            new(OpCodes.Blt_Un_S, shouldAssign), // [uint&] MaxTicks
+            new(OpCodes.Pop), //
+            new(OpCodes.Ret),
+            new CodeInstruction(OpCodes.Ldloc_S, startTimestamp).WithLabels(shouldAssign),// [uint&] MaxTicks | [long] total
+            new(OpCodes.Conv_U4),// // [uint&] MaxTicks | [uint] total
+            new(OpCodes.Stind_I4),//
+        });
+
+        CodeInstruction profilerCheckBegin = newInstuctions[index];
+
+        index = newInstuctions.FindLastIndex(index, x => x.opcode == OpCodes.Ret);
+
         while (index != -1)
         {
-            Label justReturnLabel = generator.DefineLabel();
-            List<Label> stolenLabels = newInstuctions[index].ExtractLabels();
-            newInstuctions[index].labels.Add(justReturnLabel);
-
-            newInstuctions.InsertRange(index, new CodeInstruction[]
-            {
-                // if (!profilerDisabled)
-                // {
-                //     ProfileMethodPatch.ProfileMethod(Stopwatch.GetTimestamp() - startTimestamp, ref ProfilerInfos[methodIndex], methodIndex)
-                // }
-                new CodeInstruction(OpCodes.Ldloc_S, profilerDisabled).WithLabels(stolenLabels),
-                new(OpCodes.Brtrue_S, justReturnLabel),
-
-                new(OpCodes.Call, Method(typeof(Stopwatch), nameof(Stopwatch.GetTimestamp))),
-                new(OpCodes.Ldloc_S, startTimestamp),
-                new(OpCodes.Sub),
-                new(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(ProfilerInfos))),
-                new(OpCodes.Ldc_I4, methodIndex),
-                new(OpCodes.Ldelema, typeof(ProfiledMethodInfo)),
-                new(OpCodes.Ldc_I4, methodIndex),
-                new(OpCodes.Call, Method(typeof(ProfileMethodPatch), nameof(ProfileMethod))),
-            });
+            newInstuctions[index].opcode = OpCodes.Br_S;
+            newInstuctions[index].operand = doProfilerCheck;
+            newInstuctions[index].MoveLabelsTo(profilerCheckBegin);
 
             index = newInstuctions.FindLastIndex(index, x => x.opcode == OpCodes.Ret);
         }
@@ -158,37 +213,32 @@ public static class ProfileMethodPatch
         return newInstuctions.FinishTranspiler();
     }
 
-    private static void ProfileMethod(long totalTicks, ref ProfiledMethodInfo info, int methodIndex)
-    {
-        info.InvocationCount++;
-        info.TotalTicks += totalTicks;
-        info.MaxTicks = Math.Max(info.MaxTicks, totalTicks);
-    }
-
     /// <summary>
     /// A struct for containing profiler info.
     /// </summary>
     /// <remarks><b>Do not create instances of this struct, or you will encounter problems.</b></remarks>
-    [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 1, Size = 24)]
+    [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 1, Size = MySize)]
     public unsafe struct ProfiledMethodInfo
     {
+        public const int MySize = 4 + 4 + 4;
+
         /// <summary>
         /// Gets the total number of invocations by the method associated with this instance.
         /// </summary>
         [FieldOffset(0)]
-        public long InvocationCount;
+        public uint InvocationCount;
 
         /// <summary>
         /// Gets the total ticks taken to execute by the method associated with this instance over all invocations.
         /// </summary>
-        [FieldOffset(8)]
-        public long TotalTicks;
+        [FieldOffset(4)]
+        public uint TotalTicks;
 
         /// <summary>
         /// Gets the maximum tick count generated by the method associated with this instance.
         /// </summary>
-        [FieldOffset(16)]
-        public long MaxTicks;
+        [FieldOffset(8)]
+        public uint MaxTicks;
 
         /// <summary>
         /// Gets the method associated with this instance.
@@ -197,21 +247,14 @@ public static class ProfileMethodPatch
         /// <b>NEVER call this method unless you are using the struct by reference.</b>
         /// <code>ref ProfileMethodPatch.ProfiledMethodInfo info = ref ProfileMethodPatch.ProfilerInfos[someIndex];</code>
         /// </remarks>
-        public readonly MethodBase GetMyMethod
+        public readonly string GetMyMethod
         {
             get
             {
-                int myIndex;
+                IntPtr byteOffset = Unsafe.ByteOffset(ref ProfilerInfos[0], ref Unsafe.AsRef(this));
+                int myIndex = byteOffset.ToInt32() / MySize;
 
-                fixed (ProfiledMethodInfo* info = &this)
-                {
-                    fixed (ProfiledMethodInfo* field = &ProfilerInfos[0])
-                    {
-                        myIndex = ((int)info - (int)field) / 24;
-                    }
-                }
-
-                ProfiledMethodsTracker.GetMethod(myIndex, out MethodBase result);
+                ProfiledMethodsTracker.GetMethod(myIndex, out string result);
                 return result;
             }
         }
@@ -219,7 +262,7 @@ public static class ProfileMethodPatch
         /// <summary>
         /// Gets the average tick count for the method associated with this instance.
         /// </summary>
-        public readonly long AvgTicks => TotalTicks / Math.Max(1, InvocationCount);
+        public readonly uint AvgTicks => TotalTicks / Math.Max(1, InvocationCount);
     }
 
     public static class ProfiledMethodsTracker
@@ -228,27 +271,27 @@ public static class ProfileMethodPatch
 
         private static volatile int patchedCount = 0;
 
-        private static Dictionary<MethodBase, int> patched = new(7000);
-        private static Dictionary<int, MethodBase> byIndex = new(7000);
+        private static Dictionary<int, int> patched = new(7000);
+        private static Dictionary<int, string> byIndex = new(7000);
 
         public static bool AddMethod(MethodBase method)
         {
-            if (patched.ContainsKey(method))
+            if (patched.ContainsKey(method.GetHashCode()))
                 return false;
 
             int index = Interlocked.Exchange(ref patchedCount, patchedCount + 1);
 
-            patched.Add(method, index);
-            byIndex.Add(index, method);
+            patched.Add(method.GetHashCode(), index);
+            byIndex.Add(index, string.Concat(method.DeclaringType.FullName, ".", method.Name));
             return true;
         }
 
         public static bool GetMethodIndex(MethodBase method, out int index)
         {
-            return patched.TryGetValue(method, out index);
+            return patched.TryGetValue(method.GetHashCode(), out index);
         }
 
-        public static bool GetMethod(int index, out MethodBase method)
+        public static bool GetMethod(int index, out string method)
         {
             return byIndex.TryGetValue(index, out method);
         }
