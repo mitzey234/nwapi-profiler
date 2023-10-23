@@ -31,8 +31,13 @@ public static class PlayerListUtils
 
     public static int GetCustomPlayerId(this ReferenceHub hub)
     {
-        if (!Identifiers.TryGetValue(hub, out int value))
-            value = -1;
+        int value;
+
+        lock (Lock)
+        {
+            if (!Identifiers.TryGetValue(hub, out value))
+                value = -1;
+        }
 
         return value;
     }
@@ -55,11 +60,11 @@ public static class PlayerListUtils
     {
         int result;
 
-        if (Identifiers.ContainsKey(hub))
-            return;
-
         lock (Lock)
         {
+            if (Identifiers.ContainsKey(hub))
+                return;
+
             result = PooledIdentifiers.Count > 0
                 ? PooledIdentifiers.Dequeue()
                 : Interlocked.Exchange(ref nextPlayerId, nextPlayerId + 1);
