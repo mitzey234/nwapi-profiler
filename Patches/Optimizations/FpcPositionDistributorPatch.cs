@@ -100,9 +100,9 @@ public static class FpcPositionDistributorPatch
 
         FpcServerPositionDistributor._sendCooldown -= FpcServerPositionDistributor.SendRate;
 
-        for (int i = 0; i < PlayerListUtils.VerifiedHubs.Count; i++)
+        for (int i = 0; i < PlayerListUtils.AllHubs.Count; i++)
         {
-            ReferenceHub hub = PlayerListUtils.VerifiedHubs[i];
+            ReferenceHub hub = PlayerListUtils.AllHubs[i];
 
             hub.connectionToClient.Send(new FpcPositionMessage(hub));
         }

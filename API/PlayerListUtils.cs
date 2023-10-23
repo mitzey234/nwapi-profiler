@@ -1,11 +1,7 @@
 ﻿namespace CustomProfiler.API;
-
-using Discord;
-using MEC;
 using PluginAPI.Core;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 public static class PlayerListUtils
@@ -13,26 +9,19 @@ public static class PlayerListUtils
     static PlayerListUtils()
     {
         AllHubs = new(MaxPlayers);
-        VerifiedHubs = new(MaxPlayers);
         Identifiers = new(MaxPlayers);
         PooledIdentifiers = new(MaxPlayers);
         Lock = new();
 
-        foreach (ReferenceHub hub in ReferenceHub.AllHubs)
-        {
-            AllHubs.Add(hub);
-            InstanceModeChanged(hub, hub.characterClassManager._targetInstanceMode);
-        }
+        AllHubs.AddRange(ReferenceHub.AllHubs);
 
         ReferenceHub.OnPlayerAdded += PlayerAdded;
         ReferenceHub.OnPlayerRemoved += PlayerRemoved;
-        CharacterClassManager.OnInstanceModeChanged += InstanceModeChanged;
     }
 
     public const int MaxPlayers = 200;
 
     public static readonly List<ReferenceHub> AllHubs;
-    public static readonly List<ReferenceHub> VerifiedHubs;
 
     private static readonly Dictionary<ReferenceHub, int> Identifiers;
     private static readonly Queue<int> PooledIdentifiers;
@@ -50,6 +39,8 @@ public static class PlayerListUtils
 
     private static void PlayerAdded(ReferenceHub hub)
     {
+        AssignNextId(hub);
+
         AllHubs.Add(hub);
     }
 
@@ -58,31 +49,6 @@ public static class PlayerListUtils
         ReturnId(hub);
 
         AllHubs.Remove(hub);
-        VerifiedHubs.Remove(hub);
-    }
-
-    private static void InstanceModeChanged(ReferenceHub hub, ClientInstanceMode mode)
-    {
-        if (IsVerified(hub))
-        {
-            AssignNextId(hub);
-
-            VerifiedHubs.Add(hub);
-        }
-        else
-        {
-            ReturnId(hub);
-
-            VerifiedHubs.Remove(hub);
-        }
-    }
-
-    private static bool IsVerified(ReferenceHub hub)
-    {
-        if (hub.characterClassManager._targetInstanceMode != ClientInstanceMode.ReadyClient)
-            return false;
-
-        return true;
     }
 
     private static void AssignNextId(ReferenceHub hub)
