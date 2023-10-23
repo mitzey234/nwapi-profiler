@@ -2,6 +2,7 @@
 
 using CustomProfiler.Extensions;
 using HarmonyLib;
+using PlayerRoles.PlayableScps.Scp096;
 using PlayerRoles.PlayableScps.Scp173;
 using System.Collections.Generic;
 using System.Reflection;
@@ -9,10 +10,19 @@ using System.Reflection.Emit;
 using UnityEngine;
 using static HarmonyLib.AccessTools;
 
-[HarmonyPatch(typeof(Scp173ObserversTracker))]
-public static class Scp173ObserversTrackerPatch
+[HarmonyPatch]
+public static class ObserversTrackerPatch
 {
     public const float SqrDistCannotSee = 57f;
+
+    private static IEnumerable<MethodInfo> TargetMethods()
+    {
+        return new MethodInfo[]
+        {
+            Method(typeof(Scp173ObserversTracker), nameof(Scp173ObserversTracker.IsObservedBy)),
+            Method(typeof(Scp096TargetsTracker), nameof(Scp096TargetsTracker.IsObservedBy)),
+        };
+    }
 
     [HarmonyTranspiler]
     [HarmonyPatch(nameof(Scp173ObserversTracker.IsObservedBy))]
