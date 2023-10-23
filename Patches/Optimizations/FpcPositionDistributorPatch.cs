@@ -104,6 +104,12 @@ public static class FpcPositionDistributorPatch
         {
             ReferenceHub hub = PlayerListUtils.AllHubs[i];
 
+            if (hub.characterClassManager._targetInstanceMode != ClientInstanceMode.ReadyClient)
+                continue;
+
+            if (hub.isLocalPlayer)
+                continue;
+
             hub.connectionToClient.Send(new FpcPositionMessage(hub));
         }
 
