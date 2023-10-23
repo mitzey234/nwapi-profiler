@@ -28,7 +28,6 @@ public static class FpcPositionDistributorPatch
     {
         for (int i = 0; i < PotentialMaxPlayers; i++)
         {
-            CachedRelativePositions[i] = default;
             IsCached[i] = false;
         }
     }
