@@ -29,7 +29,7 @@ public static class PlayerListUtils
         CharacterClassManager.OnInstanceModeChanged += InstanceModeChanged;
     }
 
-    public const int MaxPlayers = 110;
+    public const int MaxPlayers = 200;
 
     public static readonly List<ReferenceHub> AllHubs;
     public static readonly List<ReferenceHub> VerifiedHubs;
@@ -80,9 +80,6 @@ public static class PlayerListUtils
     private static bool IsVerified(ReferenceHub hub)
     {
         if (hub.characterClassManager._targetInstanceMode != ClientInstanceMode.ReadyClient)
-            return false;
-
-        if ((hub.characterClassManager.netIdentity.connectionToClient?.address ?? "localhost") == "localhost")
             return false;
 
         return true;
