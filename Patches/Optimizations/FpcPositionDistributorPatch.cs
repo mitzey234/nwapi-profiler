@@ -19,14 +19,12 @@ using static HarmonyLib.AccessTools;
 [HarmonyPatch(typeof(FpcServerPositionDistributor))]
 public static class FpcPositionDistributorPatch
 {
-    public const int PotentialMaxPlayers = 110;
-
-    private static readonly RelativePosition[] CachedRelativePositions = new RelativePosition[PotentialMaxPlayers];
-    private static readonly bool[] IsCached = new bool[PotentialMaxPlayers];
+    private static readonly RelativePosition[] CachedRelativePositions = new RelativePosition[PlayerListUtils.MaxPlayers];
+    private static readonly bool[] IsCached = new bool[PlayerListUtils.MaxPlayers];
 
     private static void ClearCachedRelativePositions()
     {
-        for (int i = 0; i < PotentialMaxPlayers; i++)
+        for (int i = 0; i < PlayerListUtils.MaxPlayers; i++)
         {
             IsCached[i] = false;
         }
@@ -35,8 +33,8 @@ public static class FpcPositionDistributorPatch
     [HarmonyPrepare]
     private static void Init()
     {
-        FpcServerPositionDistributor._bufferSyncData = new FpcSyncData[PotentialMaxPlayers];
-        FpcServerPositionDistributor._bufferPlayerIDs = new int[PotentialMaxPlayers];
+        FpcServerPositionDistributor._bufferSyncData = new FpcSyncData[PlayerListUtils.MaxPlayers];
+        FpcServerPositionDistributor._bufferPlayerIDs = new int[PlayerListUtils.MaxPlayers];
 
         Inventory.OnServerStarted += ClearCachedRelativePositions;
     }
@@ -164,14 +162,16 @@ public static class FpcPositionDistributorPatch
 
     private static RelativePosition GetCachedRelativePosition(ReferenceHub hub)
     {
-        ref bool isCached = ref IsCached[hub.PlayerId];
+        int customPlayerId = hub.GetCustomPlayerId();
+
+        ref bool isCached = ref IsCached[customPlayerId];
 
         if (isCached)
         {
-            return CachedRelativePositions[hub.PlayerId];
+            return CachedRelativePositions[customPlayerId];
         }
 
         isCached = true;
-        return CachedRelativePositions[hub.PlayerId] = new(hub.transform.position);
+        return CachedRelativePositions[customPlayerId] = new(hub.transform.position);
     }
 }
