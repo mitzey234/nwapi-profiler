@@ -5,7 +5,8 @@ public static class PlayerListUtils
 {
     static PlayerListUtils()
     {
-        AllHubs = new(MaxPlayers);
+        AllHubs = new(
+            );
         VerifiedHubs = new(MaxPlayers);
 
         foreach (ReferenceHub hub in ReferenceHub.AllHubs)
@@ -19,7 +20,7 @@ public static class PlayerListUtils
         CharacterClassManager.OnInstanceModeChanged += InstanceModeChanged;
     }
 
-    public const int MaxPlayers = 300;
+    public const int MaxPlayers = 500;
 
     public static readonly List<ReferenceHub> AllHubs;
     public static readonly List<ReferenceHub> VerifiedHubs;
