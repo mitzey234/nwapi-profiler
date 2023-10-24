@@ -1,4 +1,4 @@
-﻿namespace CustomProfiler.Patches.Optimizations;
+namespace CustomProfiler.Patches.Optimizations;
 
 using CustomPlayerEffects;
 using CustomProfiler.Extensions;
@@ -280,6 +280,17 @@ internal class BasicStuff
             return false;
         }
     }
+
+    [HarmonyPatch(typeof(VoiceModuleBase), "CheckRateLimit")]
+    internal class TestPatch36
+    {
+        public static void Postfix(VoiceModuleBase __instance, ref bool __result)
+        {
+            __result = true;
+            __instance._sentPackets = 0;
+        }
+    }
+
 
     /* If you want to see how often your sending player positions, uncomment this patch and it will print it to the console every second, though its based on how often GetNewSyncData is called so you might want to change things
     public static int count = 0;
