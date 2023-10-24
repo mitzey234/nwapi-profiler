@@ -1,92 +1,60 @@
 ﻿namespace CustomProfiler.API;
-using PluginAPI.Core;
-using System;
 using System.Collections.Generic;
-using System.Threading;
 
 public static class PlayerListUtils
 {
     static PlayerListUtils()
     {
         AllHubs = new(MaxPlayers);
-        Identifiers = new(MaxPlayers);
-        PooledIdentifiers = new(MaxPlayers);
-        Lock = new();
+        VerifiedHubs = new(MaxPlayers);
 
-        AllHubs.AddRange(ReferenceHub.AllHubs);
+        foreach (ReferenceHub hub in ReferenceHub.AllHubs)
+        {
+            AllHubs.Add(hub);
+            InstanceModeChanged(hub, hub.characterClassManager._targetInstanceMode);
+        }
 
         ReferenceHub.OnPlayerAdded += PlayerAdded;
         ReferenceHub.OnPlayerRemoved += PlayerRemoved;
+        CharacterClassManager.OnInstanceModeChanged += InstanceModeChanged;
     }
 
     public const int MaxPlayers = 200;
 
     public static readonly List<ReferenceHub> AllHubs;
-
-    private static readonly Dictionary<ReferenceHub, int> Identifiers;
-    private static readonly Queue<int> PooledIdentifiers;
-    private static readonly object Lock;
-
-    private static int nextPlayerId;
-
-    public static int GetCustomPlayerId(this ReferenceHub hub)
-    {
-        int value;
-
-        lock (Lock)
-        {
-            if (!Identifiers.TryGetValue(hub, out value))
-                value = -1;
-        }
-
-        return value;
-    }
+    public static readonly List<ReferenceHub> VerifiedHubs;
 
     private static void PlayerAdded(ReferenceHub hub)
     {
-        AssignNextId(hub);
-
         AllHubs.Add(hub);
     }
 
     private static void PlayerRemoved(ReferenceHub hub)
     {
-        ReturnId(hub);
-
         AllHubs.Remove(hub);
+        VerifiedHubs.Remove(hub);
     }
 
-    private static void AssignNextId(ReferenceHub hub)
+    private static void InstanceModeChanged(ReferenceHub hub, ClientInstanceMode mode)
     {
-        int result;
-
-        lock (Lock)
+        if (IsVerified(hub))
         {
-            if (Identifiers.ContainsKey(hub))
-                return;
-
-            result = PooledIdentifiers.Count > 0
-                ? PooledIdentifiers.Dequeue()
-                : Interlocked.Exchange(ref nextPlayerId, nextPlayerId + 1);
-
-            Identifiers.Add(hub, result);
-            Log.Info($"CUSTOM playerid created: {result}");
+            VerifiedHubs.Add(hub);
+        }
+        else
+        {
+            VerifiedHubs.Remove(hub);
         }
     }
 
-    private static void ReturnId(ReferenceHub hub)
+    private static bool IsVerified(ReferenceHub hub)
     {
-        lock (Lock)
-        {
-            if (!Identifiers.TryGetValue(hub, out int value))
-                return;
+        if (hub.characterClassManager._targetInstanceMode != ClientInstanceMode.ReadyClient)
+            return false;
 
-            if (PooledIdentifiers.Count == MaxPlayers)
-                throw new InvalidOperationException("Magic shit is happening that shouldn't be.");
+        if ((hub.characterClassManager.netIdentity.connectionToClient?.address ?? "localhost") == "localhost")
+            return false;
 
-            Identifiers.Remove(hub);
-            PooledIdentifiers.Enqueue(value);
-            Log.Info($"CUSTOM playerid was returned to the pool: {value}");
-        }
+        return true;
     }
 }

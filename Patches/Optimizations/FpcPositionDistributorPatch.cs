@@ -100,9 +100,9 @@ public static class FpcPositionDistributorPatch
 
         FpcServerPositionDistributor._sendCooldown -= FpcServerPositionDistributor.SendRate;
 
-        for (int i = 0; i < PlayerListUtils.AllHubs.Count; i++)
+        for (int i = 0; i < PlayerListUtils.VerifiedHubs.Count; i++)
         {
-            ReferenceHub hub = PlayerListUtils.AllHubs[i];
+            ReferenceHub hub = PlayerListUtils.VerifiedHubs[i];
 
             if (hub.characterClassManager._targetInstanceMode != ClientInstanceMode.ReadyClient)
                 continue;
@@ -172,16 +172,14 @@ public static class FpcPositionDistributorPatch
 
     private static RelativePosition GetCachedRelativePosition(ReferenceHub hub)
     {
-        int customPlayerId = hub.GetCustomPlayerId();
-
-        ref bool isCached = ref IsCached[customPlayerId];
+        ref bool isCached = ref IsCached[hub.PlayerId];
 
         if (isCached)
         {
-            return CachedRelativePositions[customPlayerId];
+            return CachedRelativePositions[hub.PlayerId];
         }
 
         isCached = true;
-        return CachedRelativePositions[customPlayerId] = new(hub.transform.position);
+        return CachedRelativePositions[hub.PlayerId] = new(hub.transform.position);
     }
 }
