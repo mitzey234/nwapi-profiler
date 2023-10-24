@@ -19,7 +19,7 @@ public static class PlayerListUtils
         CharacterClassManager.OnInstanceModeChanged += InstanceModeChanged;
     }
 
-    public const int MaxPlayers = 200;
+    public const int MaxPlayers = 300;
 
     public static readonly List<ReferenceHub> AllHubs;
     public static readonly List<ReferenceHub> VerifiedHubs;

@@ -59,7 +59,7 @@ public static class PickupStandardPhysicsPatch
 
             _this._serverPrevVelSqr = sqrMagnitude;
 
-            if (!_this._serverPrevSleeping && ((Time.frameCount + _this._pickup.GetInstanceID()) % (ServerStatic.ServerTickrate * 5) != 0))
+            if (!_this._serverPrevSleeping && ((Time.frameCount + _this._pickup.GetInstanceID()) % (Application.targetFrameRate * 5) != 0))
             {
                 return;
             }

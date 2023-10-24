@@ -3,6 +3,7 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 public static class TypeExtensions
@@ -68,6 +69,31 @@ public static class TypeExtensions
             }
 
             type = type.BaseType;
+        }
+    }
+
+    public static HashSet<Type> IncludingNestedTypes(this IEnumerable<Type> types)
+    {
+        return types.SelectMany(IncludingNestedTypes).ToHashSet();
+    }
+
+    public static IEnumerable<Type> IncludingNestedTypes(this Type type)
+    {
+        Queue<Type> types = new(8);
+        types.Enqueue(type);
+
+        while (types.Count > 0)
+        {
+            Type t = types.Dequeue();
+
+            yield return t;
+
+            Type[] nested = t.GetNestedTypes(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+
+            for (int i = 0; i < nested.Length; i++)
+            {
+                types.Enqueue(nested[i]);
+            }
         }
     }
 }

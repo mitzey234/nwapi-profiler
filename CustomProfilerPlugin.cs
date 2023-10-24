@@ -6,7 +6,6 @@ using CustomProfiler.Extensions;
 using CustomProfiler.Patches;
 using HarmonyLib;
 using Interactables;
-using Interactables.Interobjects.DoorUtils;
 using InventorySystem.Items.Firearms.BasicMessages;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244.Hypothermia;
@@ -212,59 +211,23 @@ public sealed class CustomProfilerPlugin
             return;
         }
 
-        Type[] types = typeof(GameCore.Console).Assembly.GetTypes();
+        Type[] types = typeof(GameCore.Console).Assembly.GetTypes().IncludingNestedTypes().ToArray();
 
         // use hashset so we dont
         // try to patch the same method twice.
         HashSet<MethodBase> methods = new();
 
-        List<string> disabled = new List<string>
-        {
-            "UnityEngine",
-            "System.",
-            "LiteNetLib.",
-            "Mirror",
-            "RelativePositioning",
-            "StaticUnityMethods",
-            "VoiceChatPlaybackBase",
-            "Radio.RadioItem",
-            "DoorVariant.Update",
-            "Distributors.Locker",
-            "DoorUtils.DoorVariant",
-            "RoomLightController",
-            ".PlayerRoleManager",
-            ".TimedGrenadePickup",
-            ".PlayerEffectsController",
-            ".StatusEffectBase",
-            ".ElevatorChamber",
-            ".FirstPersonMovementModule",
-            "PlayerEffectsController",
-            "Visibility.VisibilityController",
-            "Playbacks.PersonalRadioPlayback",
-            "RigidBodyElevatorFollower",
-            "LightContainmentZoneDecontamination.DecontaminationController.Update",
-            "Scp173.Scp173MovementModule",
-            "AlphaWarheadController",
-            "ReferenceHub",
-            "PlayerRoles.",
-            "CharacterClassManager."
-        };
 
         int failed = 0;
 
         foreach (Type t in types)
         {
-            if (!t.IsSubclassOf(typeof(MonoBehaviour)))
-                continue;
-            if (disabled.FirstOrDefault(x => t.FullName.Contains(x)) != null) continue;
-            if (t.IsSubclassOf(typeof(DoorVariant))) continue;
-
-
             foreach (MethodInfo m in t.GetFullyConstructedMethods(includeNonPublic: true))
             {
-                if (disabled.FirstOrDefault(x => m.DeclaringType.FullName.Contains(x)) != null) continue;
+                if (!m.AllowsProfiling())
+                    continue;
+
                 methods.Add(m);
-                //break;
             }
         }
 

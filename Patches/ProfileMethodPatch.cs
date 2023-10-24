@@ -18,7 +18,7 @@ using static HarmonyLib.AccessTools;
 
 public static class ProfileMethodPatch
 {
-    public const int MaxPatches = 5000;
+    public const int MaxPatches = 4000;
 
     internal static bool DisableProfiler = false;
 
@@ -80,14 +80,7 @@ public static class ProfileMethodPatch
             baseType = baseType.BaseType;
         }
 
-        try
-        {
-            CustomProfilerPlugin.Harmony.Patch(method, prefix: null, postfix: null, transpiler: ProfilerTranspiler, finalizer: null);
-        }
-        catch (Exception e)
-        {
-            Log.Error(e.ToString());
-        }
+        CustomProfilerPlugin.Harmony.Patch(method, prefix: null, postfix: null, transpiler: ProfilerTranspiler, finalizer: null);
     }
 
     private static unsafe IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
@@ -99,6 +92,11 @@ public static class ProfileMethodPatch
         }
 
         instructions.BeginTranspiler(out List<CodeInstruction> newInstuctions);
+
+        // This is a method that does not return.
+        // Likely throws an exception.
+        if (!newInstuctions.Any(x => x.opcode == OpCodes.Ret))
+            return instructions;
 
         // long startTimestamp;
         LocalBuilder startTimestamp = generator.DeclareLocal(typeof(long));
@@ -203,9 +201,11 @@ public static class ProfileMethodPatch
 
         while (index != -1)
         {
-            newInstuctions[index].opcode = OpCodes.Br_S;
-            newInstuctions[index].operand = doProfilerCheck;
-            newInstuctions[index].MoveLabelsTo(profilerCheckBegin);
+            CodeInstruction instruction = newInstuctions[index];
+
+            instruction.opcode = OpCodes.Br;
+            instruction.operand = doProfilerCheck;
+            instruction.MoveLabelsTo(profilerCheckBegin);
 
             index = newInstuctions.FindLastIndex(index, x => x.opcode == OpCodes.Ret);
         }
@@ -267,7 +267,7 @@ public static class ProfileMethodPatch
 
     public static class ProfiledMethodsTracker
     {
-        public static int MaxIndex => patchedCount - 1;
+        public static int MaxIndex => Math.Min(patchedCount - 1, MaxPatches - 1);
 
         private static volatile int patchedCount = 0;
 
@@ -276,6 +276,9 @@ public static class ProfileMethodPatch
 
         public static bool AddMethod(MethodBase method)
         {
+            if (patchedCount == MaxPatches)
+                return false;
+
             if (patched.ContainsKey(method.GetHashCode()))
                 return false;
 
