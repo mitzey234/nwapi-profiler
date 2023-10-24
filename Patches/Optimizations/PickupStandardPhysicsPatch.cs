@@ -25,6 +25,7 @@ public static class PickupStandardPhysicsPatch
 
         newInstructions.InsertRange(0, new CodeInstruction[]
         {
+            new(OpCodes.Ldarg_0),
             new(OpCodes.Call, Method(typeof(PickupStandardPhysicsPatch), nameof(CustomUpdateServer))),
             new(OpCodes.Ret),
         });
