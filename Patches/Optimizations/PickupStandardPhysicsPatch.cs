@@ -3,13 +3,13 @@
 using CustomProfiler.Extensions;
 using HarmonyLib;
 using InventorySystem.Items.Pickups;
-using Mirror;
+using MEC;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
-using static InventorySystem.Items.Pickups.PickupStandardPhysics;
-using static HarmonyLib.AccessTools;
 using UnityEngine;
+using static HarmonyLib.AccessTools;
+using static InventorySystem.Items.Pickups.PickupStandardPhysics;
 
 /// <summary>
 /// This patch reduces pickup update rate from every 1/4 second to every 5 seconds.
@@ -31,6 +31,21 @@ public static class PickupStandardPhysicsPatch
         });
 
         newInstructions.FindLast((CodeInstruction x) => x.opcode == OpCodes.Ldc_R8).operand = 5d;
+
+        return newInstructions.FinishTranspiler();
+    }
+
+    [HarmonyTranspiler]
+    [HarmonyPatch(MethodType.Constructor, typeof(ItemPickupBase), typeof(FreezingMode))]
+    private static IEnumerable<CodeInstruction> Transpiler2(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
+    {
+        instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
+
+        newInstructions.InsertRange(newInstructions.Count - 1, new CodeInstruction[]
+        {
+            new(OpCodes.Ldarg_0),
+            new(OpCodes.Call, Method(typeof(PickupStandardPhysicsPatch), nameof(OnCreated))),
+        });
 
         return newInstructions.FinishTranspiler();
     }
@@ -68,5 +83,16 @@ public static class PickupStandardPhysicsPatch
         }
 
         _this._serverPrevSleeping = isSleeping;
+    }
+
+    private static void OnCreated(PickupStandardPhysics _this)
+    {
+        Timing.RunCoroutine(SendRigidBody(_this));
+    }
+
+    private static IEnumerator<float> SendRigidBody(PickupStandardPhysics _this)
+    {
+        _this.ServerSendRpc(_this.ServerWriteRigidbody);
+        yield break;
     }
 }

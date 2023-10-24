@@ -61,6 +61,7 @@ public sealed class CustomProfilerPlugin
         // try to apply some patches here and see what works.
         // if you get any errors you dont know how to fix, contact me.
 
+        Time.fixedDeltaTime = 0.08f;
         HarmonyOptimizations.PatchAll();
         optimized = true;
 
