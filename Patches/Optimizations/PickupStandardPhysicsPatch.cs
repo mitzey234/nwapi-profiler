@@ -74,7 +74,7 @@ public static class PickupStandardPhysicsPatch
 
             _this._serverPrevVelSqr = sqrMagnitude;
 
-            if (!_this._serverPrevSleeping && ((Time.frameCount + _this._pickup.GetInstanceID()) % (Application.targetFrameRate * 5) != 0))
+            if (!_this._serverPrevSleeping && ((Time.frameCount + _this._pickup.GetInstanceID()) % (Application.targetFrameRate) != 0))
             {
                 return;
             }
@@ -92,7 +92,7 @@ public static class PickupStandardPhysicsPatch
 
     private static IEnumerator<float> SendRigidBody(PickupStandardPhysics _this)
     {
+        yield return Timing.WaitForOneFrame;
         _this.ServerSendRpc(_this.ServerWriteRigidbody);
-        yield break;
     }
 }
