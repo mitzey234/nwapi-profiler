@@ -1,15 +1,17 @@
 ﻿namespace CustomProfiler.Commands;
 
 using CommandSystem;
+using CustomProfiler.API;
 using CustomProfiler.Metrics;
-using CustomProfiler.Patches;
 using MEC;
+using NorthwoodLib.Pools;
 using PlayerRoles.RoleAssign;
 using PluginAPI.Core;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection;
+using System.Linq;
+using System.Text;
+using UnityEngine;
 using ICommand = CommandSystem.ICommand;
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
@@ -256,5 +258,54 @@ class BeginTestingNotice : ICommand
             Map.Broadcast(duration: 2, message: "<color=yellow>---Server stress testing in progress---</color>", clearPrevius: false);
             yield return Timing.WaitForSeconds(1.5f);
         }
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+class ShowMonoInstances : ICommand
+{
+    public string[] Aliases { get; set; } = { "monoblist" };
+
+    public string Description { get; set; } = "Shows the list of mono behaviour instances";
+
+    String ICommand.Command { get; } = "monoblist";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        Type[] bhs = UnityEngine.Object.FindObjectsOfType<MonoBehaviour>(includeInactive: true).Select(x => x.GetType()).ToArray();
+        Dictionary<Type, int> counts = new(bhs.Length);
+
+        for (int i = 0; i < bhs.Length; i++)
+        {
+            counts.TryGetValue(bhs[i], out int count);
+            counts[bhs[i]] = count + 1;
+        }
+
+        StringBuilder builder = StringBuilderPool.Shared.Rent();
+
+        foreach (var pair in counts.OrderByDescending(x => x.Value))
+        {
+            builder.AppendLine($"{pair.Value:000000} | {pair.Key.FullName}");
+        }
+
+        Log.Info(StringBuilderPool.Shared.ToStringReturn(builder));
+        response = "info printed to console";
+        return true;
+    }
+}
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+class MonoTestCmd : ICommand
+{
+    public string[] Aliases { get; set; } = { };
+
+    public string Description { get; set; } = "Shows mono memory (test command)";
+
+    String ICommand.Command { get; } = "monomemory";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        response = $"\nused: {MonoNative.mono_gc_get_used_size()}\nheap: {MonoNative.mono_gc_get_heap_size()}";
+        return true;
     }
 }

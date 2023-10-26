@@ -83,6 +83,23 @@ public class MethodMetrics
                 break;
         }
 
+        builder.AppendLine();
+
+        count = 0;
+        sortedDict = from entry in enumerable orderby entry.Value.TotalMemory descending select entry;
+
+        builder.AppendLine("Memory Allocated:");
+        foreach (AsRef<ProfiledMethodInfo> asRefInfo in sortedDict)
+        {
+            ref ProfiledMethodInfo info = ref asRefInfo.Value;
+            string method = info.GetMyMethod;
+
+            builder.AppendLine($"{method} - {info.TotalMemory} - Invocation count: {info.InvocationCount}");
+
+            if (count++ > 10)
+                break;
+        }
+
         string result = StringBuilderPool.Shared.ToStringReturn(builder);
 
         if (print)

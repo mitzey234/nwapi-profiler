@@ -100,6 +100,7 @@ public static class ProfileMethodPatch
 
         // long startTimestamp;
         LocalBuilder startTimestamp = generator.DeclareLocal(typeof(long));
+        LocalBuilder startMemory = generator.DeclareLocal(typeof(long));
 
         Label profilerDisabledLabel = generator.DefineLabel();
 
@@ -112,25 +113,34 @@ public static class ProfileMethodPatch
             // if (!ProfileMethodPatch.DisableProfiler)
             // {
             //     long startTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+            //     long startMemory = MonoNative.mono_gc_get_used_size();
             // }
             new(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(DisableProfiler))),
             new(OpCodes.Brtrue_S, profilerDisabledLabel),
+
             new(OpCodes.Call, Method(typeof(Stopwatch), nameof(Stopwatch.GetTimestamp))),
             new(OpCodes.Stloc_S, startTimestamp),
+
+            new(OpCodes.Call, Method(typeof(MonoNative), nameof(MonoNative.mono_gc_get_used_size))),
+            new(OpCodes.Stloc_S, startMemory),
         });
 
         int index = newInstuctions.FindLastIndex(x => x.opcode == OpCodes.Ret);
 
-        Label returnIfProfilerDisabled = generator.DefineLabel();
+        Label justReturn = generator.DefineLabel();
         Label doProfilerCheck = generator.DefineLabel();
         Label shouldAssign = generator.DefineLabel();
         List<Label> originalReturnLabels = newInstuctions[index].ExtractLabels();
 
-        newInstuctions[index].labels.Add(returnIfProfilerDisabled);
+        Label memoryGreaterOrEqualZero = generator.DefineLabel();
+        Label memoryCheck = generator.DefineLabel();
+
+        newInstuctions[index].labels.Add(justReturn);
 
         // if (!ProfileMethodPatch.DisableProfiler)
         // {
         //     long totalTicks = Stopwatch.GetTimestamp() - startTimestamp;
+        //     long totalMemory = MonoNative.mono_gc_get_used_size() - startMemory;
         //
         //     ref ProfiledMethodInfo profilerInfo = ref ProfileMethodPatch.ProfilerInfos[methodIndex];
         //
@@ -141,18 +151,28 @@ public static class ProfileMethodPatch
         //     {
         //         profilerInfo.MaxTicks = (uint)totalTicks;
         //     }
+        //     if (totalMemory >= 0)
+        //     {
+        //         profilerInfo.MemoryAllocated += totalMemory;
+        //     }
         // }
         newInstuctions.InsertRange(index, new CodeInstruction[]
         {
             new CodeInstruction(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(DisableProfiler)))
                 .WithLabels(doProfilerCheck).WithLabels(originalReturnLabels),
-            new(OpCodes.Brtrue_S, returnIfProfilerDisabled),
+            new(OpCodes.Brtrue_S, justReturn),
 
             // long totalTicks = Stopwatch.GetTimestamp() - startTimestamp;
             new(OpCodes.Call, Method(typeof(Stopwatch), nameof(Stopwatch.GetTimestamp))),
             new(OpCodes.Ldloc_S, startTimestamp),
             new(OpCodes.Sub),
             new(OpCodes.Stloc_S, startTimestamp),
+
+            // long totalMemory = MonoNative.mono_gc_get_used_size() - startMemory;
+            new(OpCodes.Call, Method(typeof(MonoNative), nameof(MonoNative.mono_gc_get_used_size))),
+            new(OpCodes.Ldloc_S, startMemory),
+            new(OpCodes.Sub),
+            new(OpCodes.Stloc_S, startMemory),
 
             // ref ProfiledMethodInfo profilerInfo = ref ProfileMethodPatch.ProfilerInfos[methodIndex];
             new(OpCodes.Ldsfld, Field(typeof(ProfileMethodPatch), nameof(ProfilerInfos))),
@@ -182,6 +202,7 @@ public static class ProfileMethodPatch
             // {
             //     profilerInfo.MaxTicks = (uint)totalTicks;
             // }
+            new(OpCodes.Dup),
             new(OpCodes.Ldflda, Field(typeof(ProfiledMethodInfo), nameof(ProfiledMethodInfo.MaxTicks))),// [uint&] MaxTicks
             new(OpCodes.Dup), // [uint&] MaxTicks | [uint&] MaxTicks
             new(OpCodes.Ldind_U4), // [uint&] MaxTicks | [uint] MaxTicks
@@ -189,10 +210,30 @@ public static class ProfileMethodPatch
             new(OpCodes.Conv_U4), // [uint&] MaxTicks | [uint] MaxTicks | [uint] total
             new(OpCodes.Blt_Un_S, shouldAssign), // [uint&] MaxTicks
             new(OpCodes.Pop), //
-            new(OpCodes.Ret),
+            new(OpCodes.Br, memoryCheck),
             new CodeInstruction(OpCodes.Ldloc_S, startTimestamp).WithLabels(shouldAssign),// [uint&] MaxTicks | [long] total
             new(OpCodes.Conv_U4),// // [uint&] MaxTicks | [uint] total
             new(OpCodes.Stind_I4),//
+
+            // if (totalMemory >= 0)
+            // {
+            //     profilerInfo.MemoryAllocated += totalMemory;
+            // }
+            new CodeInstruction(OpCodes.Ldloc_S, startMemory).WithLabels(memoryCheck),
+            new(OpCodes.Conv_U4),
+            new(OpCodes.Ldc_I4_0),
+            new(OpCodes.Conv_U4),
+            new(OpCodes.Bge_S, memoryGreaterOrEqualZero),
+            new(OpCodes.Pop),
+            new(OpCodes.Ret, justReturn),
+
+            new CodeInstruction(OpCodes.Ldflda, Field(typeof(ProfiledMethodInfo), nameof(ProfiledMethodInfo.TotalMemory))).WithLabels(memoryGreaterOrEqualZero), // [uint&] MemoryAllocated
+            new(OpCodes.Dup), // [uint&] MemoryAllocated | [uint&] MemoryAllocated
+            new(OpCodes.Ldind_U4), // [uint&] MemoryAllocated | [uint] MemoryAllocated
+            new(OpCodes.Ldloc_S, startMemory), // [uint&] MemoryAllocated | [uint] MemoryAllocated | [long] totalMemory
+            new(OpCodes.Conv_U4), // [uint&] MemoryAllocated | [uint] MemoryAllocated | [uint] totalMemory
+            new(OpCodes.Add),// [uint&] MemoryAllocated | [uint] MemoryAllocated + totalMemory
+            new(OpCodes.Stind_I4), //
         });
 
         CodeInstruction profilerCheckBegin = newInstuctions[index];
@@ -220,7 +261,7 @@ public static class ProfileMethodPatch
     [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 1, Size = MySize)]
     public unsafe struct ProfiledMethodInfo
     {
-        public const int MySize = 4 + 4 + 4;
+        public const int MySize = 4 + 4 + 4 + 4;
 
         /// <summary>
         /// Gets the total number of invocations by the method associated with this instance.
@@ -239,6 +280,12 @@ public static class ProfileMethodPatch
         /// </summary>
         [FieldOffset(8)]
         public uint MaxTicks;
+
+        /// <summary>
+        /// Gets the total number of memory (in bytes) that has been allocated by the method associated with this instance.
+        /// </summary>
+        [FieldOffset(12)]
+        public uint TotalMemory;
 
         /// <summary>
         /// Gets the method associated with this instance.
@@ -263,6 +310,11 @@ public static class ProfileMethodPatch
         /// Gets the average tick count for the method associated with this instance.
         /// </summary>
         public readonly uint AvgTicks => TotalTicks / Math.Max(1, InvocationCount);
+
+        /// <summary>
+        /// Gets the average memory allocated (in bytes) for the method associated with this instance.
+        /// </summary>
+        public readonly uint AvgMemory => TotalMemory / Math.Max(1, InvocationCount);
     }
 
     public static class ProfiledMethodsTracker

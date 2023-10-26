@@ -31,6 +31,9 @@ public static class DestroySelfPatch
         yield return Method(typeof(Scp173InsanitySoundtrack), "Awake");
         yield return Method(typeof(StatusBar), "Update");
         yield return Method(typeof(HDAdditionalLightData), "Awake");
+        yield return Method(typeof(ControlPanelLights), "Start");
+        yield return Method(typeof(FirearmWorldmodelInitializer), "Initialize");
+        yield return Method(typeof(DecalProjector), "Awake");
     }
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
