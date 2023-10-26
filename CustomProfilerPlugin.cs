@@ -134,6 +134,7 @@ public sealed class CustomProfilerPlugin
             info.InvocationCount = 0;
             info.TotalTicks = 0;
             info.MaxTicks = 0;
+            info.TotalMemory = 0;
         }
     }
 
