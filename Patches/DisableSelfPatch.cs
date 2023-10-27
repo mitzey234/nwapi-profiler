@@ -48,27 +48,3 @@ public static class DisableSelfPatch
         };
     }
 }
-
-[HarmonyPatch]
-public static class DisableSelfPatchButContinue
-{
-    private static IEnumerable<MethodInfo> TargetMethods()
-    {
-        yield return Method(typeof(VoiceModuleBase), "Update");
-    }
-
-    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
-    {
-        instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
-
-        newInstructions.InsertRange(0, new CodeInstruction[]
-        {
-            // this.enabled = false;
-            new(OpCodes.Ldarg_0),
-            new(OpCodes.Ldc_I4_0),
-            new(OpCodes.Call, PropertySetter(typeof(Behaviour), nameof(Behaviour.enabled))),
-        });
-
-        return newInstructions.FinishTranspiler();
-    }
-}

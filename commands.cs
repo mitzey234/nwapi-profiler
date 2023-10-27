@@ -35,25 +35,6 @@ class profiler : ICommand, IHiddenCommand
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
-class memory : ICommand, IHiddenCommand
-{
-    public string[] Aliases { get; set; } = new string[] { };
-
-    public string Description { get; set; } = "Prints memory metrics to the console";
-
-    public string usage { get; set; } = "memory";
-
-    string ICommand.Command { get; } = "memory";
-
-    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
-    {
-        response = "\n" + CustomProfilerPlugin.getMemoryMetrics(true);
-        return true;
-    }
-}
-
-[CommandHandler(typeof(RemoteAdminCommandHandler))]
-[CommandHandler(typeof(GameConsoleCommandHandler))]
 class resetProfiler : ICommand, IHiddenCommand
 {
     public string[] Aliases { get; set; } = new string[] { };

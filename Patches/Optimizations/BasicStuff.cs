@@ -170,32 +170,6 @@ internal class BasicStuff
         }
     }
 
-    [HarmonyPatch(typeof(VoiceTransceiver))]
-    public static class TestPatch27
-    {
-        // We dont call update inside of a foreach loop.
-        // We call after the ratelimit check.
-
-        [HarmonyTranspiler]
-        [HarmonyPatch(nameof(VoiceTransceiver.ServerReceiveMessage))]
-        private static IEnumerable<CodeInstruction> VoiceTransceiverServerReceiveMessage_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
-        {
-            instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
-
-            int index = newInstructions.FindIndex(x => x.Calls(Method(typeof(VoiceModuleBase), nameof(VoiceModuleBase.CheckRateLimit))));
-
-            newInstructions.InsertRange(index + 1, new CodeInstruction[]
-            {
-                // voiceRole.VoiceModule.Update();
-                new(OpCodes.Ldloc_0),
-                new(OpCodes.Callvirt, PropertyGetter(typeof(IVoiceRole), nameof(IVoiceRole.VoiceModule))),
-                new(OpCodes.Callvirt, Method(typeof(VoiceModuleBase), nameof(VoiceModuleBase.Update))),
-            });
-
-            return newInstructions.FinishTranspiler();
-        }
-    }
-
     //Slow down ServerRole updates
     [HarmonyPatch(typeof(ServerRoles))]
     internal class TestPatch28

@@ -55,6 +55,7 @@ public static class MethodExtensions
     {
         typeof(NetworkMessage),
         typeof(ServerConsole),
+        typeof(StaticUnityMethods),
     };
 
     public static bool AllowsProfiling(this MethodInfo method)
@@ -113,8 +114,8 @@ public static class MethodExtensions
             return false;
 
         // Don't patch really small methods
-        if (method.GetMethodBody().GetILAsByteArray().Length < 30)
-            return false;
+        //if (method.GetMethodBody().GetILAsByteArray().Length < 30)
+            //return false;
 
         // Don't allow methods that return IEnumerable
         if (method.ReturnsEnumerable())

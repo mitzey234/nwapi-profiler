@@ -18,7 +18,7 @@ using static HarmonyLib.AccessTools;
 
 public static class ProfileMethodPatch
 {
-    public const int MaxPatches = 4000;
+    public const int MaxPatches = 8000;
 
     internal static bool DisableProfiler = false;
 
@@ -28,11 +28,18 @@ public static class ProfileMethodPatch
 
     private static HashSet<int> OptimizedMethods;
 
+    internal static IEnumerable<CodeInstruction> AddMethodAndApplyProfiler(this IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
+    {
+        ProfiledMethodsTracker.AddMethod(method);
+
+        return Transpiler(instructions, method, generator);
+    }
+
     internal static IEnumerable<AsRef<ProfiledMethodInfo>> GetProfilerInfos()
     {
-        int maxIndex = ProfiledMethodsTracker.MaxIndex;
+        int count = ProfiledMethodsTracker.PatchedCount;
 
-        for (int i = 0; i < maxIndex; i++)
+        for (int i = 0; i < count; i++)
         {
             yield return new(ref ProfilerInfos[i]);
         }
@@ -319,12 +326,12 @@ public static class ProfileMethodPatch
 
     public static class ProfiledMethodsTracker
     {
-        public static int MaxIndex => Math.Min(patchedCount - 1, MaxPatches - 1);
+        public static int PatchedCount => patchedCount;
 
         private static volatile int patchedCount = 0;
 
-        private static Dictionary<int, int> patched = new(7000);
-        private static Dictionary<int, string> byIndex = new(7000);
+        private static Dictionary<int, int> patched = new(MaxPatches);
+        private static Dictionary<int, string> byIndex = new(MaxPatches);
 
         public static bool AddMethod(MethodBase method)
         {
