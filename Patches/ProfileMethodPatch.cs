@@ -103,7 +103,7 @@ public static class ProfileMethodPatch
         // This is a method that does not return.
         // Likely throws an exception.
         if (!newInstuctions.Any(x => x.opcode == OpCodes.Ret))
-            return instructions;
+            return newInstuctions.FinishTranspiler();
 
         // long startTimestamp;
         LocalBuilder startTimestamp = generator.DeclareLocal(typeof(long));
