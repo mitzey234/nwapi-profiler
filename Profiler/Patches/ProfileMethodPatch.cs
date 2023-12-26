@@ -26,8 +26,6 @@ public static class ProfileMethodPatch
 
     private static readonly HarmonyMethod ProfilerTranspiler = new(typeof(ProfileMethodPatch), nameof(Transpiler));
 
-    private static HashSet<int> OptimizedMethods;
-
     internal static IEnumerable<CodeInstruction> AddMethodAndApplyProfiler(this IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {
         ProfiledMethodsTracker.AddMethod(method);

@@ -156,8 +156,8 @@ class BeginTestingNotice : ICommand
     {
         while (true)
         {
-            Map.Broadcast(duration: 2, message: "<color=yellow>---Server stress testing in progress---</color>", clearPrevius: false);
-            yield return Timing.WaitForSeconds(1.5f);
+            Map.Broadcast(duration: 2, message: "<size=25><color=yellow>---Experimental build test in progress---</color></size>", clearPrevius: true);
+            yield return Timing.WaitForSeconds(1.95f);
         }
     }
 }
