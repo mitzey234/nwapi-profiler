@@ -1,4 +1,6 @@
-﻿namespace Optimizer.Patches.Optimizations;
+﻿using Mirror;
+
+namespace Optimizer.Patches.Optimizations;
 
 using Optimizer.Extensions;
 using HarmonyLib;
@@ -29,24 +31,7 @@ public static class PickupStandardPhysicsPatch
             new(OpCodes.Call, Method(typeof(PickupStandardPhysicsPatch), nameof(CustomUpdateServer))),
             new(OpCodes.Ret),
         });
-
-        newInstructions.FindLast((CodeInstruction x) => x.opcode == OpCodes.Ldc_R8).operand = 5d;
-
-        return newInstructions.FinishTranspiler();
-    }
-
-    [HarmonyTranspiler]
-    [HarmonyPatch(MethodType.Constructor, typeof(ItemPickupBase), typeof(FreezingMode))]
-    private static IEnumerable<CodeInstruction> Transpiler2(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
-    {
-        instructions.BeginTranspiler(out List<CodeInstruction> newInstructions);
-
-        newInstructions.InsertRange(newInstructions.Count - 1, new CodeInstruction[]
-        {
-            new(OpCodes.Ldarg_0),
-            new(OpCodes.Call, Method(typeof(PickupStandardPhysicsPatch), nameof(OnCreated))),
-        });
-
+        
         return newInstructions.FinishTranspiler();
     }
 
@@ -74,25 +59,15 @@ public static class PickupStandardPhysicsPatch
 
             _this._serverPrevVelSqr = sqrMagnitude;
 
-            if (!_this._serverPrevSleeping && ((Time.frameCount + _this._pickup.GetInstanceID()) % (Application.targetFrameRate) != 0))
+            if (!_this._serverPrevSleeping && _this._serverNextUpdateTime > NetworkTime.time)
             {
                 return;
             }
 
             _this.ServerSendRpc(_this.ServerWriteRigidbody);
+            _this._serverNextUpdateTime = NetworkTime.time + Plugin.PluginConfig.ItemPickupServerUpdateRate;
         }
 
         _this._serverPrevSleeping = isSleeping;
-    }
-
-    private static void OnCreated(PickupStandardPhysics _this)
-    {
-        Timing.RunCoroutine(SendRigidBody(_this));
-    }
-
-    private static IEnumerator<float> SendRigidBody(PickupStandardPhysics _this)
-    {
-        yield return Timing.WaitForOneFrame;
-        _this.ServerSendRpc(_this.ServerWriteRigidbody);
     }
 }

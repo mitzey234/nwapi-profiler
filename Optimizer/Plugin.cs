@@ -1,4 +1,6 @@
-﻿namespace Optimizer;
+﻿using Optimizer.Patches.Optimizations;
+
+namespace Optimizer;
 
 using CustomPlayerEffects;
 using HarmonyLib;
