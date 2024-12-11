@@ -3,29 +3,20 @@ using InventorySystem.Items.MicroHID;
 using InventorySystem.Items.ThrowableProjectiles;
 using Mirror;
 using Utils;
-
-namespace Optimizer.Patches.Optimizations;
-
 using CustomPlayerEffects;
 using Optimizer.Extensions;
 using Elevators;
 using HarmonyLib;
-using Hazards;
 using InventorySystem.Items.Armor;
 using InventorySystem.Items.Firearms.Attachments;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244;
 using MapGeneration.Distributors;
-using PlayerRoles;
-using PlayerRoles.FirstPersonControl;
 using PlayerRoles.FirstPersonControl.NetworkMessages;
 using PlayerRoles.PlayableScps.Scp079;
 using PlayerRoles.PlayableScps.Scp079.Cameras;
 using PlayerRoles.Voice;
-using PluginAPI.Core;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -34,6 +25,8 @@ using UnityEngine;
 using Utils.NonAllocLINQ;
 using VoiceChat.Networking;
 using static HarmonyLib.AccessTools;
+
+namespace Optimizer.Patches.Optimizations;
 
 [HarmonyPatch]
 internal class BasicStuff
@@ -294,7 +287,7 @@ internal class BasicStuff
 
 			return newInstructions.FinishTranspiler();
 		}
-
+		
 		[HarmonyTranspiler]
 		[HarmonyPatch(typeof(VoiceModuleBase), nameof(VoiceModuleBase.Update))]
 		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
@@ -307,7 +300,6 @@ internal class BasicStuff
 			newInstructions.InsertRange(index, new[]
 			{
 				// if (this._sentPackets > this._prevSent) go to beginLabel
-				new CodeInstruction(OpCodes.Ldarg_0),
 				new CodeInstruction(OpCodes.Ldfld, Field(typeof(VoiceModuleBase), nameof(VoiceModuleBase._sentPackets))),
 				new CodeInstruction(OpCodes.Ldarg_0),
 				new CodeInstruction(OpCodes.Ldfld, Field(typeof(VoiceModuleBase), nameof(VoiceModuleBase._prevSent))),
@@ -363,7 +355,7 @@ internal class BasicStuff
 		public static void Postfix(ElevatorFollowerBase __instance)
 		{
 			if (!__instance.enabled) __instance.enabled = true;
-			if (!__instance.InElevator || __instance.TrackedChamber._curSequence == Interactables.Interobjects.ElevatorChamber.ElevatorSequence.Ready)
+			if (!__instance.InElevator || __instance.TrackedChamber.CurSequence == Interactables.Interobjects.ElevatorChamber.ElevatorSequence.Ready)
 			{
 				if (__instance.enabled)
 				{
@@ -519,7 +511,7 @@ internal class BasicStuff
 		        Details g = queue.Find(r => true);
 		        g.ready = true;
 		        ExplosionUtils.ServerSpawnEffect(g.position, ItemType.GrenadeHE);
-		        ExplosionGrenade.Explode(g.attacker, g.position, g.settingsReference);
+		        ExplosionGrenade.Explode(g.attacker, g.position, g.settingsReference, ExplosionType.Grenade);
 		        queue.Remove(g);
 	        }
 	        if (count > 0) _frames++; //This will make it so at least 1 frame passes before we render more explosions

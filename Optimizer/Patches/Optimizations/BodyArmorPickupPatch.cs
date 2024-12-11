@@ -14,7 +14,6 @@ using static HarmonyLib.AccessTools;
 [HarmonyPatch(typeof(BodyArmorPickup))]
 public static class BodyArmorPickupPatch
 {
-    [HarmonyTranspiler]
     [HarmonyPatch(nameof(BodyArmorPickup.Update))]
     private static IEnumerable<CodeInstruction> Update_Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)
     {

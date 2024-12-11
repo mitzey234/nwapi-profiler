@@ -1,18 +1,11 @@
-﻿namespace Optimizer.Commands;
+﻿using Optimizer;
+using UnityEngine;
+
+namespace CustomProfiler.Commands;
 
 using CommandSystem;
-using MEC;
-using NorthwoodLib.Pools;
-using Optimizer;
-using PlayerRoles.RoleAssign;
-using PluginAPI.Core;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using UnityEngine;
 using ICommand = CommandSystem.ICommand;
-
 
 [CommandHandler(typeof(RemoteAdminCommandHandler))]
 [CommandHandler(typeof(GameConsoleCommandHandler))]
@@ -29,6 +22,7 @@ class uncap : ICommand, IHiddenCommand
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         Plugin.upcapped = !Plugin.upcapped;
+        Application.targetFrameRate = Plugin.upcapped ? 1000 : 60;
         response = Plugin.upcapped ? "Enabling" : "Disabling";
         return true;
     }

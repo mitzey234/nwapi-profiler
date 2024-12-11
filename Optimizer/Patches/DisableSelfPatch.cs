@@ -1,11 +1,15 @@
-﻿namespace Optimizer.Patches;
+﻿using CameraShaking;
+using GameCore;
+using InventorySystem.Items.Firearms;
+using WaterPhysics;
+
+namespace Optimizer.Patches;
 
 using FacilitySoundtrack;
 using HarmonyLib;
 using Interactables.Interobjects.DoorUtils;
 using PlayerRoles.FirstPersonControl.Thirdperson;
 using PlayerRoles.Ragdolls;
-using PlayerRoles.Voice;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -24,13 +28,15 @@ public static class DisableSelfPatch
         yield return Method(typeof(ZoneAmbientSoundtrack), "UpdateVolume");
         yield return Method(typeof(SoundtrackManager), "Update");
         yield return Method(typeof(MainCameraController), "LateUpdate");
-        yield return Method(typeof(HumanCharacterModel), "Update"); //This may or may not break things, it seems ok tho
         yield return Method(typeof(AnimatedCharacterModel), "Update"); //This may or may not break things, it seems ok tho
         yield return Method(typeof(BasicRagdoll), "Update");
         yield return Method(typeof(DynamicRagdoll), "Update");
         yield return Method(typeof(AlphaWarheadNukesitePanel), "Update");
         yield return Method(typeof(AlphaWarheadOutsitePanel), "Update");
-        //yield return Method(typeof(PersonalRadioPlayback), nameof(PersonalRadioPlayback.Awake)); //Disable radio updates and let manual updater do it every second, potentially breaks the game / radios
+        yield return Method(typeof(WorldmodelLaserExtension), "LateUpdate");
+        yield return Method(typeof(BuoyantWater), "FixedUpdate");
+        yield return Method(typeof(CameraShakeController), "LateUpdate");
+        yield return Method(typeof(Console), "Update");
     }
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)

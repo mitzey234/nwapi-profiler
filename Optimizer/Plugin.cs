@@ -1,33 +1,28 @@
-﻿using Optimizer.Patches.Optimizations;
-
-namespace Optimizer;
-
+﻿using Interactables.Interobjects;
+using Interactables.Interobjects.DoorUtils;
+using Optimizer.Patches.Optimizations;
 using CustomPlayerEffects;
 using HarmonyLib;
 using Interactables;
-using InventorySystem.Items.Firearms.BasicMessages;
 using InventorySystem.Items.Pickups;
 using InventorySystem.Items.Usables.Scp244.Hypothermia;
-using Mirror;
 using PlayerRoles;
-using PlayerRoles.FirstPersonControl;
-using PlayerRoles.FirstPersonControl.NetworkMessages;
 using PlayerRoles.PlayableScps.Scp079.Cameras;
 using PluginAPI.Core;
 using PluginAPI.Core.Attributes;
 using PluginAPI.Enums;
-using PluginAPI.Events;
 using Respawning;
 using RoundRestarting;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using Optimizer.Patches;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Utils;
 using Utils.NonAllocLINQ;
 using VoiceChat;
+
+namespace Optimizer;
+
 
 public sealed class Plugin
 {
@@ -46,13 +41,19 @@ public sealed class Plugin
 
         HarmonyOptimizations.PatchAll();
 
-        StaticUnityMethods.OnLateUpdate += onUpdate;
+        StaticUnityMethods.OnFixedUpdate += onUpdate;
         SceneManager.sceneUnloaded += onSceneUnload;
     }
 
     public static void onSceneUnload(Scene scene)
     {
         if (scene.name != "Facility") return;
+        
+        //Clean up variables
+        DoorVariantPatch.doortimes.Clear();
+        DoorVariantPatch.ignore.Clear();
+        DoorVariantPatch.subIgnore.Clear();
+        BreakableWindowPatch.times.Clear();
 
         //clean up InteractableColliders
         InteractableCollider.AllInstances.Clear();
@@ -62,12 +63,6 @@ public sealed class Plugin
         //Clean up ItemPickupBases
         List<ItemPickupBase> array = UnityEngine.Object.FindObjectsOfType<ItemPickupBase>().Where(i => i != null).ToList();
         array.ForEach(i => i.PhysicsModuleSyncData.Clear());
-
-        //Cleanup FirearmClientsideStateDatabase
-        FirearmClientsideStateDatabase.AdsTracker.Clear();
-        FirearmClientsideStateDatabase.PreReloadStatuses.Clear();
-        FirearmClientsideStateDatabase.ReloadTimes.Clear();
-        FirearmClientsideStateDatabase.ReloadTracker.Clear();
     }
 
     internal static float timer = 0;
@@ -78,28 +73,44 @@ public sealed class Plugin
 
     public static void onUpdate()
     {
+        if (RoundRestart.IsRoundRestarting) return;
+        
         timer += Time.deltaTime;
 
-        if (RoundRestart.IsRoundRestarting)
-            return;
-
-        if (timer <= 1.0f)
-            return;
+        if (timer <= 1.0f) return;
         timer = 0;
 
         upcount++;
 
-        Application.targetFrameRate = upcapped ? 1000 : 60;
-
         if (Player.GetPlayers().Count(p => p.Role == RoleTypeId.Scp079) == 0) Scp079Camera.AllInstances.ForEach(c => c.enabled = false);
         else Scp079Camera.AllInstances.ForEach(c => c.enabled = true);
-        ReferenceHub.AllHubs.ForEach(p => {
+        
+        ReferenceHub.AllHubs.ForEach(p =>
+        {
+            if (p.isLocalPlayer) return;
+            
             foreach (StatusEffectBase b in p.playerEffectsController.AllEffects)
             {
                 b.Update();
-                if (b is Hypothermia) (b as Hypothermia).SubEffects.ForEach(e => e.enabled = e.IsActive);
-                if (b is CardiacArrest) (b as CardiacArrest).SubEffects.ForEach(e => e.enabled = e.IsActive);
-                if (b is InsufficientLighting) (b as InsufficientLighting).AlwaysUpdate();
+                if (b is Hypothermia hypothermia)
+                {
+                    foreach (HypothermiaSubEffectBase subEffect in hypothermia.SubEffects)
+                    {
+                        subEffect.enabled = subEffect.IsActive;
+                    }
+                }
+                else if (b is CardiacArrest cardiacArrest)
+                {
+                    foreach (SubEffectBase subEffect in cardiacArrest.SubEffects)
+                    {
+                        subEffect.enabled = subEffect.IsActive;
+                    }
+                }
+                else if (b is InsufficientLighting insufficientLighting)
+                {
+                    insufficientLighting.AlwaysUpdate();
+                }
+
                 if (b.IsEnabled && b.enabled == false)
                 {
                     b.enabled = true;
@@ -118,5 +129,20 @@ public sealed class Plugin
             Log.Debug("Disabled global chat indicator");
             GlobalChatIndicatorManager._singleton.enabled = false;
         }
+        
+        foreach (var genPair in BasicStuff.GeneratorControllerOptimizer.instances.ToList())
+        {
+            genPair.Key.Update();
+        }
+    }
+
+    public static void StartDoor(DoorVariant door, List<DoorVariant> ignore = null)
+    {
+        if (ignore == null) ignore = new List<DoorVariant>();
+        if (door is CheckpointDoor checkpointDoor) checkpointDoor.SubDoors.Where(d => !ignore.Contains(d)).ToList().ForEach(d => StartDoor(door, checkpointDoor.SubDoors.Concat(ignore).ToList()));
+        DoorVariantPatch.doortimes[door] = 7.0f;
+        door._existenceCooldown = 0;
+        door.SetColliders();
+        door.enabled = true;
     }
 }

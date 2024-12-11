@@ -92,10 +92,8 @@ public static class TeslaGatePatch
 
             var aliveHubs = ListPool<ReferenceHub>.Shared.Rent(ReferenceHub.AllHubs.Where(PlayerRolesUtils.IsAlive));
 
-            for (int i = 0; i < _this.TeslaGates.Count; i++)
+            foreach (var teslaGate in TeslaGate.AllGates)
             {
-                TeslaGate teslaGate = _this.TeslaGates[i];
-
                 if (!teslaGate.isActiveAndEnabled)
                     continue;
 

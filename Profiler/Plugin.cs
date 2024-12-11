@@ -40,6 +40,8 @@ public sealed class Plugin
     static EventHandlers ev;
 
     public static bool updateFields = false;
+    
+    public static bool upcapped = false;
 
     [PluginConfig]
     public static Config PluginConfig;
@@ -103,9 +105,7 @@ public sealed class Plugin
         {
             foreach (MethodInfo m in t.GetFullyConstructedMethods(includeNonPublic: true))
             {
-                if (!m.AllowsProfiling())
-                    continue;
-
+                if (!m.AllowsProfiling()) continue;
                 methods.Add(m);
             }
         }

@@ -23,14 +23,12 @@ public static class DestroySelfPatch
     {
         yield return Method(typeof(MainCameraController), "LateUpdate");
         yield return Method(typeof(LiquidWobble), "Start");
-        yield return Method(typeof(FirearmWorldmodelLaser), "Awake");
         yield return Method(typeof(EnvMimicryStandardButton), "Awake");
         yield return Method(typeof(HumeShieldBarController), "Awake");
         yield return Method(typeof(VoiceChatMicCapture), "Awake");
         yield return Method(typeof(Scp173InsanitySoundtrack), "Awake");
         yield return Method(typeof(StatusBar), "Update");
         yield return Method(typeof(ControlPanelLights), "Start");
-        yield return Method(typeof(FirearmWorldmodelInitializer), "Initialize");
     }
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method, ILGenerator generator)

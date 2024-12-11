@@ -2,7 +2,6 @@
 
 using HarmonyLib;
 using Mirror;
-using PlayerRoles.FirstPersonControl;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,7 +14,8 @@ public static class MethodExtensions
 {
     private static readonly Assembly AllowedAssembly = typeof(GameCore.Console).Assembly;
 
-    private static readonly string[] DisallowedNamespaces = new string[]
+    private static readonly string[] 
+        DisallowedNamespaces = new string[]
     {
         "_Scripts.",
         "Achievements.",
@@ -31,11 +31,11 @@ public static class MethodExtensions
         "Decals.",
         "GameCore.",
         "Hints.",
-        "LiteNetLib.",
-        "LiteNetLib4Mirror.",
+         "LiteNetLib.",
+         "LiteNetLib4Mirror.",
         "MapGeneration.",
         "Microsoft.",
-        "Mirror.",
+         "Mirror.",
         "RadialMenus.",
         "Security.",
         "Serialization.",
